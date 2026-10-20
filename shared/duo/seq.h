@@ -6,7 +6,11 @@
 
 namespace Sequencer {
 static const unsigned INITIAL_VELOCITY = 100;
+// Number of physical step buttons/LEDs. Also the default sequence length.
 static const uint8_t NUM_STEPS = 8;
+static const uint8_t STEPS_PER_PAGE = NUM_STEPS;
+// Longest supported sequence (4 pages of 8 steps).
+static const uint8_t MAX_STEPS = 32;
 static const unsigned PULSES_PER_QUARTER_NOTE = 24;
 static const unsigned TICKS_PER_STEP = (PULSES_PER_QUARTER_NOTE / 2);
 
@@ -112,10 +116,6 @@ enum SpeedModifier {
   QuadSpeed = 4
 };
 
-static uint8_t wrapped_step(const uint8_t step) {
-  return step % NUM_STEPS;
-}
-
 struct Sequencer;
 typedef void (&OnRunnningAdvance)(Sequencer &);
 
@@ -148,7 +148,21 @@ struct Sequencer {
     return running;
   }
   inline uint8_t cur_step_index() const {
-    return (current_step + step_offset) % NUM_STEPS;
+    return wrapped_step(current_step + step_offset);
+  }
+  // Wraps any step number into the current sequence length.
+  inline uint8_t wrapped_step(const unsigned step) const {
+    return step % length;
+  }
+  inline uint8_t get_length() const {
+    return length;
+  }
+  // Sets the sequence length (clamped to 1..MAX_STEPS). When the sequence
+  // gets longer, the new steps are filled by repeating the existing pattern.
+  void set_length(uint8_t new_length);
+  // The page (group of 8 steps) the playhead is currently on.
+  inline uint8_t cur_page() const {
+    return cur_step_index() / STEPS_PER_PAGE;
   }
   inline uint32_t get_clock() const {
     return clock;
@@ -197,6 +211,7 @@ private:
 
   bool running = false;
   bool step_played_live = false;
+  uint8_t length = NUM_STEPS;
   uint8_t current_step = 0;
   uint8_t step_offset = 0;
   uint8_t last_played_step = 0;
@@ -211,7 +226,7 @@ private:
     uint8_t enabled = false;
     uint8_t note = 0;
   };
-  Step steps[NUM_STEPS];
+  Step steps[MAX_STEPS];
 };
 } // namespace Sequencer
 

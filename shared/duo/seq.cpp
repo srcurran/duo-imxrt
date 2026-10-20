@@ -46,9 +46,30 @@ Sequencer::Sequencer(Output::Callbacks callbacks,
     : output(callbacks), on_running_advance(on_running_advance) {
   arp.init();
 
-  for (int i = 0; i < NUM_STEPS; ++i) {
-    steps[i].enabled = i != 1 && i != (NUM_STEPS - 2);
+  for (int i = 0; i < MAX_STEPS; ++i) {
+    const int page_step = i % STEPS_PER_PAGE;
+    steps[i].enabled = page_step != 1 && page_step != (STEPS_PER_PAGE - 2);
   }
+}
+
+void Sequencer::set_length(uint8_t new_length) {
+  if (new_length < 1) {
+    new_length = 1;
+  } else if (new_length > MAX_STEPS) {
+    new_length = MAX_STEPS;
+  }
+
+  // Repeat the existing pattern into the newly added steps.
+  for (unsigned i = length; i < new_length; ++i) {
+    steps[i] = steps[i % length];
+  }
+
+  // Keep the playhead position, wrapped into the new length.
+  const uint8_t position = cur_step_index() % new_length;
+  length = new_length;
+  current_step = position;
+  step_offset = 0;
+  last_played_step = UINT8_MAX;
 }
 
 void Sequencer::run() {
@@ -88,7 +109,7 @@ void Sequencer::play_current_step() {
 }
 
 void Sequencer::set_step_offset(const uint8_t offset) {
-  step_offset = offset;
+  step_offset = wrapped_step(offset);
   last_played_step = UINT8_MAX;
   step_played_live = false;
   if (!running) {
