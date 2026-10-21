@@ -116,6 +116,21 @@ void led_deinit() {
   FastLED.show();
 }
 
+// Breathing brightness for the stopped state: a smooth 6 s cycle on millis()
+// (not the tempo clock) between ~25% and full. `phase_offset` shifts the
+// cycle (0..65535 = one full cycle; 32768 = half a cycle, the inverse).
+uint8_t breathe_brightness(const uint16_t phase_offset) {
+  const uint32_t BREATHE_PERIOD_MS = 6000;
+  const uint8_t BREATHE_MIN = 64;  // lowest brightness, ~25% of full
+  const uint16_t phase =
+      (millis() % BREATHE_PERIOD_MS) * 65536 / BREATHE_PERIOD_MS + phase_offset;
+  const uint8_t level = (cos16(phase) + 32768) >> 8;  // 255 at phase 0, 0 halfway
+  // Squaring makes the fade look even to the eye (LED output is linear),
+  // then it's mapped onto BREATHE_MIN..255 so it never goes fully dark.
+  const uint8_t curve = scale8(level, level);
+  return BREATHE_MIN + scale8(curve, 255 - BREATHE_MIN);
+}
+
 // Updates the LED colour and brightness to match the stored sequence
 void led_update() {
   // In page mode the keyboard shows the length as a meter: keys 1-4 light up
@@ -165,27 +180,21 @@ void led_update() {
     led_play = LED_WHITE;
   } else {
     // Play LED breathes: 3 s from full down to 25%, 3 s back to full.
-    // Timed on millis(), not the tempo clock.
-    const uint32_t BREATHE_PERIOD_MS = 6000;
-    const uint8_t BREATHE_MIN = 64;  // lowest brightness, ~25% of full
-    const uint16_t phase = (millis() % BREATHE_PERIOD_MS) * 65536 / BREATHE_PERIOD_MS;
-    const uint8_t level = (cos16(phase) + 32768) >> 8;  // 255 at phase 0, 0 halfway
-    // Squaring makes the fade look even to the eye (LED output is linear),
-    // then it's mapped onto BREATHE_MIN..255 so it never goes fully dark.
-    const uint8_t curve = scale8(level, level);
     led_play = LED_WHITE;
-    led_play.nscale8_video(BREATHE_MIN + scale8(curve, 255 - BREATHE_MIN));
+    led_play.nscale8_video(breathe_brightness(0));
 
     if (sequencer.note_playing()) {
       leds(cur_led) = LED_WHITE;
     } else {
-      // Steady (not flashing) marker on the current step: where play resumes.
+      // The cursor step (where play resumes) breathes too, half a cycle
+      // out of step with Play: brightest when Play is dimmest. An enabled
+      // step breathes in its note colour, an empty one in white.
       if (sequencer.get_step_enabled(cur_seq_step)) {
-        leds(cur_led) = blend(COLORS[sequencer.get_step_note(cur_seq_step) % 24], LED_WHITE, 128);
+        leds(cur_led) = COLORS[sequencer.get_step_note(cur_seq_step) % 24];
       } else {
         leds(cur_led) = LED_WHITE;
-        leds(cur_led).nscale8_video(64);
       }
+      leds(cur_led).nscale8_video(breathe_brightness(32768));
     }
   }
 
