@@ -122,6 +122,12 @@ void led_update() {
     physical_leds[i + 9] = COLORS[SCALE[i] % 24];
   }
 
+  // With more than 8 steps, keyboard key 1-4 turns white to show which page
+  // (steps 1-8, 9-16, ...) the playhead is on.
+  if (sequencer.get_length() > Sequencer::STEPS_PER_PAGE) {
+    physical_leds[sequencer.cur_page() + 9] = LED_WHITE;
+  }
+
   // The step LEDs show the page (8 steps) the playhead is on.
   for (int l = 0; l < Sequencer::STEPS_PER_PAGE; l++) {
     const uint8_t step = sequencer.step_on_cur_page(l);
