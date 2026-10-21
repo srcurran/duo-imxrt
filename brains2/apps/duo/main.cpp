@@ -162,23 +162,23 @@ static void process_key(const char k, const char state) {
                    // PRESSED, HOLD, or RELEASED
     case PRESSED:
       if (k <= KEYB_9 && k >= KEYB_0) {
+        const uint8_t key = k - KEYB_0;
+        const uint8_t pages = Sequencer::MAX_STEPS / Sequencer::STEPS_PER_PAGE;
         if (in_setup) {
-          midi_set_channel((k - KEYB_0) + 1);
+          midi_set_channel(key + 1);
+        } else if (random_held && key < pages) {
+          // Random + keyboard key 1/2/3/4 sets the length to 8/16/24/32 steps.
+          // The key doesn't play a note, and random jumping stops.
+          random_combo_used = true;
+          random_flag = false;
+          combo_keys_held |= (1 << key);
+          sequencer.set_length((key + 1) * Sequencer::STEPS_PER_PAGE);
         } else {
-          keyboard_set_note(SCALE[k - KEYB_0]);
+          keyboard_set_note(SCALE[key]);
         }
       } else if (k <= STEP_8 && k >= STEP_1) {
         const uint8_t button = k - STEP_1;
-        if (random_held) {
-          // Random + step 1/2/3/4 sets the length to 8/16/24/32 steps.
-          // Any step press here counts as a combo and cancels random jumps.
-          random_combo_used = true;
-          random_flag = false;
-          const uint8_t pages = Sequencer::MAX_STEPS / Sequencer::STEPS_PER_PAGE;
-          if (button < pages) {
-            sequencer.set_length((button + 1) * Sequencer::STEPS_PER_PAGE);
-          }
-        } else if (!sequencer.toggle_step(sequencer.step_on_cur_page(button))) {
+        if (!sequencer.toggle_step(sequencer.step_on_cur_page(button))) {
           leds(button) = CRGB::Black;
         }
       } else if (k == BTN_SEQ2) {
@@ -230,7 +230,13 @@ static void process_key(const char k, const char state) {
       break;
     case RELEASED:
       if (k <= KEYB_9 && k >= KEYB_0) {
-        keyboard_unset_note(SCALE[k - KEYB_0]);
+        const uint16_t key_bit = 1 << (k - KEYB_0);
+        if (combo_keys_held & key_bit) {
+          // This key was used for a length combo, so it never held a note.
+          combo_keys_held &= ~key_bit;
+        } else {
+          keyboard_unset_note(SCALE[k - KEYB_0]);
+        }
       } else if (k == BTN_SEQ2) {
         double_speed = false;
       } else if (k == BTN_DOWN) {

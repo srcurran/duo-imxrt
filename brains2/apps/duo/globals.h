@@ -27,9 +27,12 @@ int transpose = 0;
 bool random_flag = 0;
 // True while the Random button (BTN_SEQ1) is held down.
 bool random_held = false;
-// Set when a step button is pressed while Random is held (a length combo),
+// Set when keyboard key 1-4 is pressed while Random is held (a length combo),
 // so releasing Random doesn't also jump to a random step.
 bool random_combo_used = false;
+// Keyboard keys (bit per key) pressed as part of a length combo. Their release
+// is swallowed too, so they never play or release a note.
+uint16_t combo_keys_held = 0;
 bool dfu_flag = 0;
 bool in_setup = true;
 

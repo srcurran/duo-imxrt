@@ -118,13 +118,20 @@ void led_deinit() {
 
 // Updates the LED colour and brightness to match the stored sequence
 void led_update() {
+  // While Random is held, the keyboard shows the length as a meter: keys 1-4
+  // light up one per 8 steps (in their own colours), all other keys go dark.
+  const uint8_t pages = sequencer.get_length() / Sequencer::STEPS_PER_PAGE;
   for (uint16_t i = 0; i < 10; i++) {
-    physical_leds[i + 9] = COLORS[SCALE[i] % 24];
+    if (random_held && i >= pages) {
+      physical_leds[i + 9] = CRGB::Black;
+    } else {
+      physical_leds[i + 9] = COLORS[SCALE[i] % 24];
+    }
   }
 
   // With more than 8 steps, keyboard key 1-4 turns white to show which page
   // (steps 1-8, 9-16, ...) the playhead is on.
-  if (sequencer.get_length() > Sequencer::STEPS_PER_PAGE) {
+  if (pages > 1) {
     physical_leds[sequencer.cur_page() + 9] = LED_WHITE;
   }
 
@@ -146,20 +153,8 @@ void led_update() {
     leds(cur_led) = LED_WHITE;
   }
 
-  if (random_held) {
-    // While Random is held, LEDs 1-4 show the length as a meter:
-    // one lit LED per 8 steps.
-    const uint8_t pages = sequencer.get_length() / Sequencer::STEPS_PER_PAGE;
-    for (int l = 0; l < Sequencer::STEPS_PER_PAGE; l++) {
-      leds(l) = l < pages ? LED_WHITE : CRGB(CRGB::Black);
-    }
-  }
-
   if (sequencer.is_running()) {
     led_play = LED_WHITE;
-  } else if (random_held) {
-    // Keep the play LED off while the length meter is showing.
-    led_play = CRGB::Black;
   } else {
     if (sequencer.note_playing()) {
       leds(cur_led) = LED_WHITE;
