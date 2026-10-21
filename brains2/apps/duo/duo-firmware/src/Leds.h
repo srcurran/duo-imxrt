@@ -145,18 +145,21 @@ void led_update() {
     const uint16_t phase = (millis() % BREATHE_PERIOD_MS) * 65536 / BREATHE_PERIOD_MS;
     const uint8_t level = (cos16(phase) + 32768) >> 8;  // 255 at phase 0, 0 halfway
     // Squaring makes the fade look even to the eye (LED output is linear).
+    const uint8_t breath = scale8(level, level);
     led_play = LED_WHITE;
-    led_play.nscale8_video(scale8(level, level));
+    led_play.nscale8_video(breath);
 
     if (sequencer.note_playing()) {
       leds(Sequencer::wrapped_step(cur_seq_step)) = LED_WHITE;
     } else {
-      // Steady (not flashing) marker on the current step: where play resumes.
+      // The current step (where play resumes) breathes in sync with Play.
+      // An enabled step swells from its own colour to white, an empty one
+      // from off to white.
       if (sequencer.get_step_enabled(cur_seq_step)) {
-        leds(cur_seq_step) = blend(COLORS[sequencer.get_step_note(cur_seq_step) % 24], LED_WHITE, 128);
+        leds(cur_seq_step) = blend(COLORS[sequencer.get_step_note(cur_seq_step) % 24], LED_WHITE, breath);
       } else {
         leds(cur_seq_step) = LED_WHITE;
-        leds(cur_seq_step).nscale8_video(64);
+        leds(cur_seq_step).nscale8_video(breath);
       }
     }
   }
