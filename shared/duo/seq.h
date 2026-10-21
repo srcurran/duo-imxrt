@@ -164,6 +164,18 @@ struct Sequencer {
   inline uint8_t cur_page() const {
     return cur_step_index() / STEPS_PER_PAGE;
   }
+  // Number of pages (groups of 8 steps) in the current length.
+  inline uint8_t page_count() const {
+    return (length + STEPS_PER_PAGE - 1) / STEPS_PER_PAGE;
+  }
+  // Moves the playhead to `step` (wrapped into the length) without playing
+  // anything. Used to place the cursor when stopped.
+  void set_cursor(uint8_t step);
+  // Moves the playhead to the first step of `page` (wrapped into the page
+  // count) without playing anything. Used to pick a page to edit when stopped.
+  inline void set_page(const uint8_t page) {
+    set_cursor((page % page_count()) * STEPS_PER_PAGE);
+  }
   // The playhead's position within its page (0..STEPS_PER_PAGE-1), which is
   // also the step LED/button it lights up.
   inline uint8_t cur_page_position() const {

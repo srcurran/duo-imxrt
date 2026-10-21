@@ -166,11 +166,9 @@ static void process_key(const char k, const char state) {
         const uint8_t pages = Sequencer::MAX_STEPS / Sequencer::STEPS_PER_PAGE;
         if (in_setup) {
           midi_set_channel(key + 1);
-        } else if (random_held && key < pages) {
-          // Random + keyboard key 1/2/3/4 sets the length to 8/16/24/32 steps.
-          // The key doesn't play a note, and random jumping stops.
-          random_combo_used = true;
-          random_flag = false;
+        } else if (in_page_mode() && key < pages) {
+          // Page mode: keyboard key 1/2/3/4 sets the length to 8/16/24/32
+          // steps. The key doesn't play a note.
           combo_keys_held |= (1 << key);
           sequencer.set_length((key + 1) * Sequencer::STEPS_PER_PAGE);
         } else {
@@ -178,7 +176,10 @@ static void process_key(const char k, const char state) {
         }
       } else if (k <= STEP_8 && k >= STEP_1) {
         const uint8_t button = k - STEP_1;
-        if (!sequencer.toggle_step(sequencer.step_on_cur_page(button))) {
+        if (in_page_mode()) {
+          // Page mode: a step button moves the cursor to that step.
+          sequencer.set_cursor(sequencer.step_on_cur_page(button));
+        } else if (!sequencer.toggle_step(sequencer.step_on_cur_page(button))) {
           leds(button) = CRGB::Black;
         }
       } else if (k == BTN_SEQ2) {
@@ -187,23 +188,34 @@ static void process_key(const char k, const char state) {
         }
         double_speed = true;
       } else if (k == BTN_DOWN) {
-        transpose--;
-        if (transpose < -12) {
-          transpose = -24;
+        if (in_page_mode()) {
+          // Page mode: Down goes to the previous page (wrapping around).
+          const uint8_t count = sequencer.page_count();
+          sequencer.set_page((sequencer.cur_page() + count - 1) % count);
+        } else {
+          transpose--;
+          if (transpose < -12) {
+            transpose = -24;
+          }
         }
       } else if (k == BTN_UP) {
-        transpose++;
-        if (transpose > 12) {
-          transpose = 24;
+        if (in_page_mode()) {
+          // Page mode: Up goes to the next page (wrapping around).
+          sequencer.set_page(sequencer.cur_page() + 1);
+        } else {
+          transpose++;
+          if (transpose > 12) {
+            transpose = 24;
+          }
         }
       } else if (k == BTN_SEQ1) {
-        random_held = true;
-        random_combo_used = false;
         if (sequencer.is_running()) {
           random_flag = true;
+        } else {
+          // Pressed while stopped: enter page mode instead of the original
+          // one-off random jump.
+          page_mode_held = true;
         }
-        // When stopped, the one-off random jump happens on release instead,
-        // so it can be skipped if Random was used for a length combo.
       } else if (k == SEQ_START) {
         sequencer_toggle_start();
       }
@@ -254,11 +266,8 @@ static void process_key(const char k, const char state) {
           transpose = 12;
         }
       } else if (k == BTN_SEQ1) {
-        random_held = false;
         random_flag = false;
-        if (!sequencer.is_running() && !random_combo_used) {
-          sequencer_randomize_step_offset(sequencer);
-        }
+        page_mode_held = false;
       } else if (k == SEQ_START) {
 #ifdef DEV_MODE
         if (dfu_flag == 1) {

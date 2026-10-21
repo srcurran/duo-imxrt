@@ -72,6 +72,13 @@ void Sequencer::set_length(uint8_t new_length) {
   last_played_step = UINT8_MAX;
 }
 
+void Sequencer::set_cursor(const uint8_t step) {
+  current_step = wrapped_step(step);
+  step_offset = 0;
+  last_played_step = UINT8_MAX;
+  step_played_live = false;
+}
+
 void Sequencer::run() {
   const uint8_t divider = divider_from_speed_mod(speed_mod);
   clock = divider - 1;

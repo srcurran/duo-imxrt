@@ -25,11 +25,10 @@ float osc_saw_target_frequency = 0.;
 uint8_t osc_pulse_midi_note = 0;
 int transpose = 0;
 bool random_flag = 0;
-// True while the Random button (BTN_SEQ1) is held down.
-bool random_held = false;
-// Set when keyboard key 1-4 is pressed while Random is held (a length combo),
-// so releasing Random doesn't also jump to a random step.
-bool random_combo_used = false;
+// Page mode: Random (BTN_SEQ1) pressed and held while the sequencer is
+// stopped. Keys 1-4 set the length, Up/Down change page, and step buttons
+// move the cursor. While running, Random works as normal and this stays off.
+bool page_mode_held = false;
 // Keyboard keys (bit per key) pressed as part of a length combo. Their release
 // is swallowed too, so they never play or release a note.
 uint16_t combo_keys_held = 0;
@@ -69,3 +68,9 @@ Sequencer::Sequencer
     sequencer(Sequencer::Output::Callbacks{.note_on = sequencer_note_on,
                                            .note_off = note_off},
               sequencer_on_running_advance);
+
+// True while page mode is active (see page_mode_held). Ends as soon as the
+// sequencer starts running, even if Random is still held.
+bool in_page_mode() {
+  return page_mode_held && !sequencer.is_running();
+}

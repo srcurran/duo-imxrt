@@ -409,6 +409,64 @@ void step_offset_wraps_at_length() {
   ASSERT_EQ(4, seq.cur_step_index());
 }
 
+// --- Page mode (cursor and page moves while stopped) ---
+
+void counts_pages_from_length() {
+  auto seq = make_cleared_sequencer();
+  ASSERT_EQ(1, seq.page_count());
+  seq.set_length(24);
+  ASSERT_EQ(3, seq.page_count());
+  seq.set_length(32);
+  ASSERT_EQ(4, seq.page_count());
+}
+
+void set_page_moves_cursor_without_playing() {
+  auto seq = make_cleared_sequencer();
+  seq.set_length(32);
+  set_all_steps_active(seq, true);
+
+  seq.set_page(2);
+  ASSERT_EQ(16, seq.cur_step_index());
+  ASSERT_EQ(2, seq.cur_page());
+  ASSERT_EQ(16, seq.step_on_cur_page(0));
+  ASSERT_PLAYED_COUNT(0);
+
+  // Pages wrap around the page count.
+  seq.set_page(5);
+  ASSERT_EQ(1, seq.cur_page());
+}
+
+void set_cursor_moves_to_step_without_playing() {
+  auto seq = make_cleared_sequencer();
+  seq.set_length(16);
+  set_all_steps_active(seq, true);
+  seq.set_step_offset(3);
+  NoteTracker::reset();
+
+  seq.set_cursor(13);
+  ASSERT_EQ(13, seq.cur_step_index());
+  ASSERT_EQ(0, seq.get_step_offset());
+  ASSERT_PLAYED_COUNT(0);
+
+  seq.set_cursor(20);
+  ASSERT_EQ(4, seq.cur_step_index());
+}
+
+void plays_from_cursor_after_set_page() {
+  auto seq = make_cleared_sequencer();
+  seq.set_length(16);
+  for (int i = 0; i < 16; ++i) {
+    seq.set_step_note(i, i);
+  }
+  set_all_steps_active(seq, true);
+
+  seq.set_page(1);
+  seq.run();
+  seq.advance();
+  ASSERT_PLAYED_COUNT(1);
+  ASSERT_EQ(9, NoteTracker::last_note);
+}
+
 } // namespace Tests
 
 void setUp(void) { NoteTracker::reset(); }
@@ -438,6 +496,10 @@ int main() {
   RUN_TEST(Tests::step_buttons_follow_playhead_page);
   RUN_TEST(Tests::plays_steps_on_later_pages_while_running);
   RUN_TEST(Tests::step_offset_wraps_at_length);
+  RUN_TEST(Tests::counts_pages_from_length);
+  RUN_TEST(Tests::set_page_moves_cursor_without_playing);
+  RUN_TEST(Tests::set_cursor_moves_to_step_without_playing);
+  RUN_TEST(Tests::plays_from_cursor_after_set_page);
 #endif
   return UNITY_END();
 }
