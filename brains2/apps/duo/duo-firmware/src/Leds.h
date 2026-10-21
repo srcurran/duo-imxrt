@@ -116,11 +116,11 @@ void led_deinit() {
   FastLED.show();
 }
 
-// Breathing brightness for the stopped state: a smooth 6 s cycle on millis()
+// Breathing brightness for the stopped state: a smooth 4 s cycle on millis()
 // (not the tempo clock) between ~25% and full. `phase_offset` shifts the
 // cycle (0..65535 = one full cycle; 32768 = half a cycle, the inverse).
 uint8_t breathe_brightness(const uint16_t phase_offset) {
-  const uint32_t BREATHE_PERIOD_MS = 6000;
+  const uint32_t BREATHE_PERIOD_MS = 4000;  // 2 s down, 2 s up
   const uint8_t BREATHE_MIN = 64;  // lowest brightness, ~25% of full
   const uint16_t phase =
       (millis() % BREATHE_PERIOD_MS) * 65536 / BREATHE_PERIOD_MS + phase_offset;
@@ -179,7 +179,7 @@ void led_update() {
   if (sequencer.is_running()) {
     led_play = LED_WHITE;
   } else {
-    // Play LED breathes: 3 s from full down to 25%, 3 s back to full.
+    // Play LED breathes: 2 s from full down to 25%, 2 s back to full.
     led_play = LED_WHITE;
     led_play.nscale8_video(breathe_brightness(0));
 

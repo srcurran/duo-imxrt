@@ -77,9 +77,9 @@ Full plan doc: https://claude.ai/code/artifact/c8336b8f-97ed-4703-bb62-ebb3c1ede
 - Builds cleanly for DUO_BRAINS_2.3 with the rescue combo. Earlier versions were flashed
   and tested hands-on 2026-10-21 (last: 0badb49, page key off). The page-mode version
   (18e6b80) was flashed and worked hands-on 2026-10-21. Mod 1 is done.
-- Breathing Play LED when stopped (branch `play-led-breathe`, 50603ca, worktree
-  `~/dev/datoduo-play-led`): 6 s cycle on millis(), and a steady marker on the cursor
-  step instead of flashing. Merged into `variable-length` 2026-10-21 (conflict in
+- Breathing Play LED when stopped (branch `play-led-breathe`, worktree
+  `~/dev/datoduo-play-led`): cycle on millis(), now 2 s down / 2 s up (4 s, owner's
+  request in the breathing session). Merged into `variable-length` 2026-10-21 (conflict in
   `Leds.h` resolved to use `cur_led`). Flashed 2026-10-21 (4aa03c0). Owner: stayed
   dark too long, so the minimum is now ~25% (`BREATHE_MIN = 64`); owner approved (de10689).
   The cursor step breathes too, half a cycle opposite Play (`breathe_brightness(32768)`):
@@ -105,3 +105,11 @@ arp modes, swing, per-step accent/slide, probability/mutate, ratchets,
 pattern memory + chaining (the DUO saves nothing at power-off today), punch-in
 effects, LFO, motion recording, more oscillator types, Euclidean drums.
 Top picks: scales, pattern memory, punch-in effects.
+
+## Which build to flash
+- Always flash builds from `variable-length`: it has Mod 1, the rescue combo and the
+  breathing LEDs. `play-led-breathe` is cut from Dato's main: no Mod 1, no rescue combo.
+  On 2026-10-21 a play-led-breathe build was flashed by mistake and Mod 1 disappeared.
+- play-led-breathe's later step-marker variants (59177c8, 317eb6d: step fades fully out
+  in sync with Play) were NOT merged; variable-length keeps the owner's choice from the
+  main session: step breathes opposite Play, 25% floor.
