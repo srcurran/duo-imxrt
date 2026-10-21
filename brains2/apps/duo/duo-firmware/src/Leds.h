@@ -152,15 +152,13 @@ void led_update() {
     if (sequencer.note_playing()) {
       leds(Sequencer::wrapped_step(cur_seq_step)) = LED_WHITE;
     } else {
-      // The current step (where play resumes) breathes in sync with Play.
-      // An enabled step swells from its own colour to white, an empty one
-      // from off to white.
-      if (sequencer.get_step_enabled(cur_seq_step)) {
-        leds(cur_seq_step) = blend(COLORS[sequencer.get_step_note(cur_seq_step) % 24], LED_WHITE, breath);
-      } else {
+      // The current step (where play resumes) breathes in sync with Play,
+      // fading fully out so it stands out among lit steps. An enabled step
+      // keeps its colour, an empty one shows white.
+      if (!sequencer.get_step_enabled(cur_seq_step)) {
         leds(cur_seq_step) = LED_WHITE;
-        leds(cur_seq_step).nscale8_video(breath);
       }
+      leds(cur_seq_step).nscale8_video(breath);
     }
   }
 
