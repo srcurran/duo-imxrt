@@ -18,17 +18,17 @@
                            "Expected step to be active: " #step_index);
 
 uint8_t get_step_enabled(const Sequencer::Sequencer &seq, int index) {
-  TEST_ASSERT_LESS_THAN_INT(Sequencer::NUM_STEPS, index);
+  TEST_ASSERT_LESS_THAN_INT(seq.get_length(), index);
   return seq.get_step_enabled(index);
 }
 
 uint8_t get_note(Sequencer::Sequencer &seq, int index) {
-  TEST_ASSERT_LESS_THAN_INT(Sequencer::NUM_STEPS, index);
+  TEST_ASSERT_LESS_THAN_INT(seq.get_length(), index);
   return seq.get_step_note(index);
 }
 
 void set_all_steps_active(Sequencer::Sequencer &s, const bool active) {
-  for (int i = 0; i < Sequencer::NUM_STEPS; ++i) {
+  for (int i = 0; i < s.get_length(); ++i) {
     if (s.get_step_enabled(i) != active) {
       s.toggle_step(i);
     }
@@ -39,7 +39,7 @@ void clear_steps(Sequencer::Sequencer &s) { set_all_steps_active(s, false); }
 
 int count_enabled_steps(const Sequencer::Sequencer &seq) {
   int count = 0;
-  for (int i = 0; i < Sequencer::NUM_STEPS; ++i) {
+  for (int i = 0; i < seq.get_length(); ++i) {
     if (seq.get_step_enabled(i)) {
       count++;
     }

@@ -122,25 +122,41 @@ void led_update() {
     physical_leds[i + 9] = COLORS[SCALE[i] % 24];
   }
 
-  for (int l = 0; l < Sequencer::NUM_STEPS; l++) {
-    if (sequencer.get_step_enabled(l)) {
-      leds(l) = COLORS[sequencer.get_step_note(l) % 24];
+  // The step LEDs show the page (8 steps) the playhead is on.
+  for (int l = 0; l < Sequencer::STEPS_PER_PAGE; l++) {
+    const uint8_t step = sequencer.step_on_cur_page(l);
+    if (sequencer.get_step_enabled(step)) {
+      leds(l) = COLORS[sequencer.get_step_note(step) % 24];
     } else {
       leds(l) = CRGB::Black;
     }
   }
 
   const auto cur_seq_step = sequencer.cur_step_index();
+  // The LED under the playhead.
+  const auto cur_led = sequencer.cur_page_position();
 
   if (sequencer.gate_active()) {
-    leds(cur_seq_step) = LED_WHITE;
+    leds(cur_led) = LED_WHITE;
+  }
+
+  if (random_held) {
+    // While Random is held, LEDs 1-4 show the length as a meter:
+    // one lit LED per 8 steps.
+    const uint8_t pages = sequencer.get_length() / Sequencer::STEPS_PER_PAGE;
+    for (int l = 0; l < Sequencer::STEPS_PER_PAGE; l++) {
+      leds(l) = l < pages ? LED_WHITE : CRGB(CRGB::Black);
+    }
   }
 
   if (sequencer.is_running()) {
     led_play = LED_WHITE;
+  } else if (random_held) {
+    // Keep the play LED off while the length meter is showing.
+    led_play = CRGB::Black;
   } else {
     if (sequencer.note_playing()) {
-      leds(Sequencer::wrapped_step(cur_seq_step)) = LED_WHITE;
+      leds(cur_led) = LED_WHITE;
     } else {
       const unsigned step_ticks = Sequencer::TICKS_PER_STEP;
       const uint32_t seq_clock = sequencer.get_clock() + step_ticks;
@@ -155,10 +171,10 @@ void led_update() {
         led_play = CRGB::Black;
 
         if (sequencer.get_step_enabled(cur_seq_step)) {
-          leds(cur_seq_step) = blend(LED_WHITE, COLORS[sequencer.get_step_note(cur_seq_step) % 24], fade_val);
+          leds(cur_led) = blend(LED_WHITE, COLORS[sequencer.get_step_note(cur_seq_step) % 24], fade_val);
         } else {
-          leds(cur_seq_step) = LED_WHITE;
-          leds(cur_seq_step) = leds(cur_seq_step).fadeLightBy(fade_val);
+          leds(cur_led) = LED_WHITE;
+          leds(cur_led) = leds(cur_led).fadeLightBy(fade_val);
         }
       }
     }

@@ -164,6 +164,16 @@ struct Sequencer {
   inline uint8_t cur_page() const {
     return cur_step_index() / STEPS_PER_PAGE;
   }
+  // The playhead's position within its page (0..STEPS_PER_PAGE-1), which is
+  // also the step LED/button it lights up.
+  inline uint8_t cur_page_position() const {
+    return cur_step_index() % STEPS_PER_PAGE;
+  }
+  // The step that step button `button` (0..STEPS_PER_PAGE-1) controls on the
+  // page the playhead is on.
+  inline uint8_t step_on_cur_page(const uint8_t button) const {
+    return wrapped_step(cur_page() * STEPS_PER_PAGE + button);
+  }
   inline uint32_t get_clock() const {
     return clock;
   }

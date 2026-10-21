@@ -98,7 +98,7 @@ void note_on(uint8_t midi_note, uint8_t velocity, bool enabled) {
     envelope1.noteOn();
     envelope2.noteOn();
   } else {
-    leds(sequencer.cur_step_index() % Sequencer::NUM_STEPS) = LED_WHITE;
+    leds(sequencer.cur_page_position()) = LED_WHITE;
   }
 }
 
@@ -168,9 +168,18 @@ static void process_key(const char k, const char state) {
           keyboard_set_note(SCALE[k - KEYB_0]);
         }
       } else if (k <= STEP_8 && k >= STEP_1) {
-        const uint8_t step = k - STEP_1;
-        if (!sequencer.toggle_step(step)) {
-          leds(step) = CRGB::Black;
+        const uint8_t button = k - STEP_1;
+        if (random_held) {
+          // Random + step 1/2/3/4 sets the length to 8/16/24/32 steps.
+          // Any step press here counts as a combo and cancels random jumps.
+          random_combo_used = true;
+          random_flag = false;
+          const uint8_t pages = Sequencer::MAX_STEPS / Sequencer::STEPS_PER_PAGE;
+          if (button < pages) {
+            sequencer.set_length((button + 1) * Sequencer::STEPS_PER_PAGE);
+          }
+        } else if (!sequencer.toggle_step(sequencer.step_on_cur_page(button))) {
+          leds(button) = CRGB::Black;
         }
       } else if (k == BTN_SEQ2) {
         if (!sequencer.is_running()) {
@@ -188,11 +197,13 @@ static void process_key(const char k, const char state) {
           transpose = 24;
         }
       } else if (k == BTN_SEQ1) {
+        random_held = true;
+        random_combo_used = false;
         if (sequencer.is_running()) {
           random_flag = true;
-        } else {
-          sequencer_randomize_step_offset(sequencer);
         }
+        // When stopped, the one-off random jump happens on release instead,
+        // so it can be skipped if Random was used for a length combo.
       } else if (k == SEQ_START) {
         sequencer_toggle_start();
       }
@@ -237,7 +248,11 @@ static void process_key(const char k, const char state) {
           transpose = 12;
         }
       } else if (k == BTN_SEQ1) {
+        random_held = false;
         random_flag = false;
+        if (!sequencer.is_running() && !random_combo_used) {
+          sequencer_randomize_step_offset(sequencer);
+        }
       } else if (k == SEQ_START) {
 #ifdef DEV_MODE
         if (dfu_flag == 1) {

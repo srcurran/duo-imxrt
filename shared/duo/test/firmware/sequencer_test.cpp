@@ -295,6 +295,120 @@ void plays_randomized_step() {
   ASSERT_EQ(2 + offset, NoteTracker::last_note);
 }
 
+// --- Variable sequence length ---
+
+void defaults_to_eight_steps() {
+  auto seq = make_cleared_sequencer();
+  ASSERT_EQ(Sequencer::NUM_STEPS, seq.get_length());
+
+  for (int i = 0; i < Sequencer::NUM_STEPS; ++i) {
+    seq.advance();
+  }
+  ASSERT_EQ(0, seq.cur_step_index());
+}
+
+void set_length_clamps_to_valid_range() {
+  auto seq = make_cleared_sequencer();
+  seq.set_length(0);
+  ASSERT_EQ(1, seq.get_length());
+  seq.set_length(100);
+  ASSERT_EQ(Sequencer::MAX_STEPS, seq.get_length());
+}
+
+void wraps_at_new_length() {
+  auto seq = make_cleared_sequencer();
+  seq.set_length(16);
+
+  for (int i = 0; i < 15; ++i) {
+    seq.advance();
+  }
+  ASSERT_EQ(15, seq.cur_step_index());
+  ASSERT_EQ(1, seq.cur_page());
+  ASSERT_EQ(7, seq.cur_page_position());
+
+  seq.advance();
+  ASSERT_EQ(0, seq.cur_step_index());
+  ASSERT_EQ(0, seq.cur_page());
+}
+
+void lengthening_copies_pattern_into_new_steps() {
+  auto seq = make_cleared_sequencer();
+  seq.toggle_step(0);
+  seq.set_step_note(0, 40);
+  seq.toggle_step(3);
+  seq.set_step_note(3, 43);
+
+  seq.set_length(24);
+  ASSERT_EQ(6, count_enabled_steps(seq));
+  for (int page = 0; page < 3; ++page) {
+    ASSERT_TRUE(get_step_enabled(seq, page * 8 + 0));
+    ASSERT_EQ(40, get_note(seq, page * 8 + 0));
+    ASSERT_TRUE(get_step_enabled(seq, page * 8 + 3));
+    ASSERT_EQ(43, get_note(seq, page * 8 + 3));
+  }
+}
+
+void shortening_wraps_playhead_into_new_length() {
+  auto seq = make_cleared_sequencer();
+  seq.set_length(16);
+  for (int i = 0; i < 10; ++i) {
+    seq.advance();
+  }
+  ASSERT_EQ(10, seq.cur_step_index());
+
+  seq.set_length(8);
+  ASSERT_EQ(2, seq.cur_step_index());
+  ASSERT_EQ(0, seq.cur_page());
+}
+
+void step_buttons_follow_playhead_page() {
+  auto seq = make_cleared_sequencer();
+  seq.set_length(16);
+  ASSERT_EQ(0, seq.step_on_cur_page(0));
+  ASSERT_EQ(7, seq.step_on_cur_page(7));
+
+  for (int i = 0; i < 9; ++i) {
+    seq.advance();
+  }
+  ASSERT_EQ(1, seq.cur_page());
+  ASSERT_EQ(8, seq.step_on_cur_page(0));
+  ASSERT_EQ(15, seq.step_on_cur_page(7));
+
+  // Toggling via the page touches step 9 only, not step 1 on page 0.
+  seq.toggle_step(seq.step_on_cur_page(1));
+  ASSERT_ONLY_ENABLED_STEP(seq, 9);
+}
+
+void plays_steps_on_later_pages_while_running() {
+  auto seq = make_cleared_sequencer();
+  seq.set_length(32);
+  for (int i = 0; i < 32; ++i) {
+    seq.set_step_note(i, i);
+  }
+  set_all_steps_active(seq, true);
+
+  seq.run();
+  for (int i = 0; i < 25; ++i) {
+    seq.advance();
+  }
+  ASSERT_EQ(25, NoteTracker::last_note);
+  ASSERT_EQ(3, seq.cur_page());
+
+  for (int i = 0; i < 7; ++i) {
+    seq.advance();
+  }
+  ASSERT_EQ(0, NoteTracker::last_note);
+  ASSERT_EQ(0, seq.cur_step_index());
+}
+
+void step_offset_wraps_at_length() {
+  auto seq = make_cleared_sequencer();
+  seq.set_length(16);
+  seq.set_step_offset(20);
+  ASSERT_EQ(4, seq.get_step_offset());
+  ASSERT_EQ(4, seq.cur_step_index());
+}
+
 } // namespace Tests
 
 void setUp(void) { NoteTracker::reset(); }
@@ -316,6 +430,14 @@ int main() {
   RUN_TEST(Tests::arp_does_not_replay_note_when_lower_added);
   RUN_TEST(Tests::always_records_note_when_stopped);
   RUN_TEST(Tests::plays_randomized_step);
+  RUN_TEST(Tests::defaults_to_eight_steps);
+  RUN_TEST(Tests::set_length_clamps_to_valid_range);
+  RUN_TEST(Tests::wraps_at_new_length);
+  RUN_TEST(Tests::lengthening_copies_pattern_into_new_steps);
+  RUN_TEST(Tests::shortening_wraps_playhead_into_new_length);
+  RUN_TEST(Tests::step_buttons_follow_playhead_page);
+  RUN_TEST(Tests::plays_steps_on_later_pages_while_running);
+  RUN_TEST(Tests::step_offset_wraps_at_length);
 #endif
   return UNITY_END();
 }
