@@ -189,9 +189,11 @@ static void process_key(const char k, const char state) {
         double_speed = true;
       } else if (k == BTN_DOWN) {
         if (in_page_mode()) {
-          // Page mode: Down goes to the previous page (wrapping around).
-          const uint8_t count = sequencer.page_count();
-          sequencer.set_page((sequencer.cur_page() + count - 1) % count);
+          // Page mode: Down goes to the previous page. Stops at page 1
+          // (doesn't wrap round to the last page).
+          if (sequencer.cur_page() > 0) {
+            sequencer.set_page(sequencer.cur_page() - 1);
+          }
         } else {
           transpose--;
           if (transpose < -12) {
@@ -200,8 +202,11 @@ static void process_key(const char k, const char state) {
         }
       } else if (k == BTN_UP) {
         if (in_page_mode()) {
-          // Page mode: Up goes to the next page (wrapping around).
-          sequencer.set_page(sequencer.cur_page() + 1);
+          // Page mode: Up goes to the next page. Stops at the last page
+          // (doesn't wrap round to page 1).
+          if (sequencer.cur_page() + 1 < sequencer.page_count()) {
+            sequencer.set_page(sequencer.cur_page() + 1);
+          }
         } else {
           transpose++;
           if (transpose > 12) {
