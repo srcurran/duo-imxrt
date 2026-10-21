@@ -129,10 +129,11 @@ void led_update() {
     }
   }
 
-  // With more than 8 steps, keyboard key 1-4 turns white to show which page
-  // (steps 1-8, 9-16, ...) the playhead is on.
-  if (pages > 1) {
-    physical_leds[sequencer.cur_page() + 9] = LED_WHITE;
+  // With more than 8 steps, keyboard key 1-4 turns off to show which page
+  // (steps 1-8, 9-16, ...) the playhead is on. Skipped while Random is held,
+  // so the length meter stays readable.
+  if (pages > 1 && !random_held) {
+    physical_leds[sequencer.cur_page() + 9] = CRGB::Black;
   }
 
   // The step LEDs show the page (8 steps) the playhead is on.
