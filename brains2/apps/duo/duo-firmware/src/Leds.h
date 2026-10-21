@@ -164,14 +164,17 @@ void led_update() {
   if (sequencer.is_running()) {
     led_play = LED_WHITE;
   } else {
-    // Play LED breathes: 3 s from full to off, 3 s back to full.
+    // Play LED breathes: 3 s from full down to 25%, 3 s back to full.
     // Timed on millis(), not the tempo clock.
     const uint32_t BREATHE_PERIOD_MS = 6000;
+    const uint8_t BREATHE_MIN = 64;  // lowest brightness, ~25% of full
     const uint16_t phase = (millis() % BREATHE_PERIOD_MS) * 65536 / BREATHE_PERIOD_MS;
     const uint8_t level = (cos16(phase) + 32768) >> 8;  // 255 at phase 0, 0 halfway
-    // Squaring makes the fade look even to the eye (LED output is linear).
+    // Squaring makes the fade look even to the eye (LED output is linear),
+    // then it's mapped onto BREATHE_MIN..255 so it never goes fully dark.
+    const uint8_t curve = scale8(level, level);
     led_play = LED_WHITE;
-    led_play.nscale8_video(scale8(level, level));
+    led_play.nscale8_video(BREATHE_MIN + scale8(curve, 255 - BREATHE_MIN));
 
     if (sequencer.note_playing()) {
       leds(cur_led) = LED_WHITE;
