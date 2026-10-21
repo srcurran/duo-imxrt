@@ -106,6 +106,40 @@ void button_matrix_init() {
     button_matrix.setHoldTime(2000);
 }
 
+// Reads one key straight from the matrix, the same way Keypad::scanKeys does,
+// but without the Keypad library's debounce or state tracking.
+static bool key_read_raw(const char key) {
+  for (uint8_t r = 0; r < ROWS; r++) {
+    for (uint8_t c = 0; c < COLS; c++) {
+      if (buttons[r][c] != key) {
+        continue;
+      }
+      for (uint8_t i = 0; i < ROWS; i++) {
+        pinMode(row_pins[i], INPUT_PULLUP);
+      }
+      pinMode(col_pins[c], OUTPUT);
+      digitalWrite(col_pins[c], LOW);
+      delayMicroseconds(50);
+      const bool pressed = (digitalRead(row_pins[r]) == LOW);
+      pinMode(col_pins[c], INPUT_PULLUP);
+      return pressed;
+    }
+  }
+  return false;
+}
+
+// Rescue combo: true if Up and Down are both held for about 50 ms.
+// Checked once at power-on, before USB, audio or anything else starts.
+bool rescue_combo_held() {
+  for (int i = 0; i < 5; i++) {
+    if (!key_read_raw(BTN_UP) || !key_read_raw(BTN_DOWN)) {
+      return false;
+    }
+    delay(10);
+  }
+  return true;
+}
+
 bool keys_scan_powerbutton() {
   bool r = false;
 

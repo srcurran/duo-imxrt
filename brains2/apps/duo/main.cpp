@@ -404,6 +404,13 @@ int main(void) {
   Sync::init();
   LEDs::init();
   pins_init();
+
+  // Rescue: hold Up + Down while powering on to jump straight to the ROM
+  // bootloader, so a bad build can always be replaced with the updater.
+  if (rescue_combo_held()) {
+    BOARD_EnterROMBootloader();
+  }
+
   Drums::init();
   delay(USB_STARTUP_DELAY_MS);
   DatoUSB::init();
