@@ -186,15 +186,14 @@ void led_update() {
     if (sequencer.note_playing()) {
       leds(cur_led) = LED_WHITE;
     } else {
-      // The cursor step (where play resumes) breathes too, half a cycle
-      // out of step with Play: brightest when Play is dimmest. An enabled
-      // step breathes in its note colour, an empty one in white.
+      // The cursor step (where play resumes) breathes in time with Play.
+      // An enabled step breathes in its note colour, an empty one in white.
       if (sequencer.get_step_enabled(cur_seq_step)) {
         leds(cur_led) = COLORS[sequencer.get_step_note(cur_seq_step) % 24];
       } else {
         leds(cur_led) = LED_WHITE;
       }
-      leds(cur_led).nscale8_video(breathe_brightness(32768));
+      leds(cur_led).nscale8_video(breathe_brightness(0));
     }
   }
 
