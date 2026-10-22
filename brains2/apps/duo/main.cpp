@@ -176,10 +176,15 @@ static void process_key(const char k, const char state) {
         }
       } else if (k <= STEP_8 && k >= STEP_1) {
         const uint8_t button = k - STEP_1;
+        const uint8_t step = sequencer.step_on_cur_page(button);
         if (in_page_mode()) {
           // Page mode: a step button moves the cursor to that step.
-          sequencer.set_cursor(sequencer.step_on_cur_page(button));
-        } else if (!sequencer.toggle_step(sequencer.step_on_cur_page(button))) {
+          sequencer.set_cursor(step);
+        } else if (!sequencer.is_running() && step == sequencer.cur_step_index()) {
+          // Stopped, on the breathing cursor step: toggle it, and turning it
+          // off enters a rest (the cursor moves on to the next step).
+          sequencer.toggle_cursor_step();
+        } else if (!sequencer.toggle_step(step)) {
           leds(button) = CRGB::Black;
         }
       } else if (k == BTN_SEQ2) {

@@ -79,6 +79,15 @@ void Sequencer::set_cursor(const uint8_t step) {
   step_played_live = false;
 }
 
+bool Sequencer::toggle_cursor_step() {
+  const uint8_t step = cur_step_index();
+  const bool enabled = toggle_step(step);
+  if (!enabled) {
+    set_cursor(step + 1);
+  }
+  return enabled;
+}
+
 void Sequencer::run() {
   const uint8_t divider = divider_from_speed_mod(speed_mod);
   clock = divider - 1;

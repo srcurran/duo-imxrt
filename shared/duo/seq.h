@@ -207,6 +207,10 @@ struct Sequencer {
     steps[step].enabled = enabled;
     return enabled;
   }
+  // Step entry while stopped: toggles the cursor step. If that turns it off,
+  // the cursor moves on to the next step, so the step is entered as a rest.
+  // Nothing plays. Returns the step's new enabled state.
+  bool toggle_cursor_step();
   inline void set_step_note(const uint8_t step, const uint8_t note) {
     steps[wrapped_step(step)].note = note;
   }

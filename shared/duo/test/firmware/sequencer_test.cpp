@@ -467,6 +467,34 @@ void plays_from_cursor_after_set_page() {
   ASSERT_EQ(9, NoteTracker::last_note);
 }
 
+void toggling_cursor_step_off_enters_a_rest() {
+  auto seq = make_cleared_sequencer();
+  seq.set_length(16);
+  seq.set_cursor(7);
+  seq.toggle_step(7);
+  NoteTracker::reset();
+
+  // On step turned off: the cursor moves to the next step, onto page 2.
+  ASSERT_FALSE(seq.toggle_cursor_step());
+  ASSERT_FALSE(get_step_enabled(seq, 7));
+  ASSERT_EQ(8, seq.cur_step_index());
+  ASSERT_EQ(1, seq.cur_page());
+
+  // Off step: first press turns it on and the cursor stays...
+  ASSERT_TRUE(seq.toggle_cursor_step());
+  ASSERT_EQ(8, seq.cur_step_index());
+  // ...second press turns it off and moves on.
+  ASSERT_FALSE(seq.toggle_cursor_step());
+  ASSERT_EQ(9, seq.cur_step_index());
+  ASSERT_PLAYED_COUNT(0);
+
+  // Wraps at the end of the sequence.
+  seq.set_cursor(15);
+  seq.toggle_cursor_step();
+  seq.toggle_cursor_step();
+  ASSERT_EQ(0, seq.cur_step_index());
+}
+
 } // namespace Tests
 
 void setUp(void) { NoteTracker::reset(); }
@@ -500,6 +528,7 @@ int main() {
   RUN_TEST(Tests::set_page_moves_cursor_without_playing);
   RUN_TEST(Tests::set_cursor_moves_to_step_without_playing);
   RUN_TEST(Tests::plays_from_cursor_after_set_page);
+  RUN_TEST(Tests::toggling_cursor_step_off_enters_a_rest);
 #endif
   return UNITY_END();
 }

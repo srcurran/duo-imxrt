@@ -66,6 +66,11 @@ Full plan doc: https://claude.ai/code/artifact/c8336b8f-97ed-4703-bb62-ebb3c1ede
     viewed page's key flashes (200 ms on/off), also with 8 steps.
 - Page indicator outside page mode: when length > 8, the playing page's key (1-4) is off
   (owner found off more obvious than white). With 8 steps all keys are lit.
+- Rests while stopped (owner's request 2026-10-22): pressing the step button under the
+  breathing cursor toggles that step; turning it off moves the cursor on one step
+  (`Sequencer::toggle_cursor_step`), so a rest is entered without going back a page.
+  An off cursor step takes two presses (on, then off). Other step buttons toggle as before.
+  Built, not yet flashed.
 - Earlier designs, replaced: Random + step buttons for length; Random + keys while running.
 - The 8 step LEDs follow the playhead's page (1-8, 9-16, ...). Step buttons toggle
   `page * 8 + button` on the shown page (`Sequencer::step_on_cur_page`).
