@@ -30,7 +30,8 @@ Full plan doc: https://claude.ai/code/artifact/c8336b8f-97ed-4703-bb62-ebb3c1ede
 - The firmware's USB commit label is stamped when the build runs, which is before the
   commit, so it reads one commit behind. Compare the .bin files to check what's flashed.
 - Firmware images in `restore/` (committed): `restore/duo-imxrt_resistive_2.4.0.bin`
-  (official, sha256 75d2894c...) and `restore/duo_variable-length_685a4e6.bin`.
+  (official, sha256 75d2894c...), `restore/duo_variable-length_685a4e6.bin` and
+  `restore/duo_main_bf912e4.bin` (the build now on the DUO, sha256 c9adeaea...).
   Before this mod the DUO ran Dato main @ ed8a5eaf, board DUO_BRAINS_2.3.
 - Test sequencer logic with the unit tests before building:
   `cd shared/duo/test && ./run_tests.sh`
@@ -45,9 +46,11 @@ Full plan doc: https://claude.ai/code/artifact/c8336b8f-97ed-4703-bb62-ebb3c1ede
 - Don't push to origin (Dato's repo); its push URL is disabled in this checkout
   (`git remote set-url --push origin DISABLED-do-not-push-to-dato`).
 - Personal fork: https://github.com/srcurran/duo-imxrt (public; forks of public repos
-  must be). Remote name `fork`. Branches `variable-length` and `play-led-breathe` are
-  pushed and track `fork/...`. CLAUDE.md and `restore/` are committed on `variable-length`
-  (so public on the fork).
+  must be). Remote name `fork`. `main` (pushed to `fork/main`, 2026-10-22) holds all the
+  mods; `variable-length` and `play-led-breathe` are also pushed. CLAUDE.md and `restore/`
+  are committed (so public on the fork). Local `main` is checked out in `~/dev/datoduo-main`.
+- Dato's open PRs reviewed 2026-10-22: none taken. #188 (littlefs persistent settings) is
+  the base to revisit for pattern memory; it's untested on hardware and touches startup.
 
 ## Mod 1: variable sequence length (done, branch `variable-length`)
 - **Page mode** (owner's design, 2026-10-21): press and hold **Random** (BTN_SEQ1) while
@@ -70,7 +73,7 @@ Full plan doc: https://claude.ai/code/artifact/c8336b8f-97ed-4703-bb62-ebb3c1ede
   breathing cursor toggles that step; turning it off moves the cursor on one step
   (`Sequencer::toggle_cursor_step`), so a rest is entered without going back a page.
   An off cursor step takes two presses (on, then off). Other step buttons toggle as before.
-  Built, not yet flashed.
+  Flashed with main (bf912e4) 2026-10-22.
 - Earlier designs, replaced: Random + step buttons for length; Random + keys while running.
 - The 8 step LEDs follow the playhead's page (1-8, 9-16, ...). Step buttons toggle
   `page * 8 + button` on the shown page (`Sequencer::step_on_cur_page`).
@@ -87,9 +90,9 @@ Full plan doc: https://claude.ai/code/artifact/c8336b8f-97ed-4703-bb62-ebb3c1ede
   request in the breathing session). Merged into `variable-length` 2026-10-21 (conflict in
   `Leds.h` resolved to use `cur_led`). Flashed 2026-10-21 (4aa03c0). Owner: stayed
   dark too long, so the minimum is now ~25% (`BREATHE_MIN = 64`); owner approved (de10689).
-  The cursor step breathes too, half a cycle opposite Play (`breathe_brightness(32768)`):
-  note colour if enabled, white if empty. Flashed with the no-wrap page change
-  (70d6d0a) 2026-10-21, restarted fine; hands-on check pending.
+  The cursor step breathes too, in time with Play (`breathe_brightness(0)`, owner's
+  choice in the bf912e4 merge; it used to be half a cycle opposite): note colour if
+  enabled, white if empty.
 
 ## Mod 2: drum pads (planned)
 Code: `brains2/apps/duo/duo-firmware/src/DrumSynth.h`, `brains2/apps/duo/boards/*/drums.h`.
@@ -112,9 +115,10 @@ effects, LFO, motion recording, more oscillator types, Euclidean drums.
 Top picks: scales, pattern memory, punch-in effects.
 
 ## Which build to flash
-- Always flash builds from `variable-length`: it has Mod 1, the rescue combo and the
-  breathing LEDs. `play-led-breathe` is cut from Dato's main: no Mod 1, no rescue combo.
-  On 2026-10-21 a play-led-breathe build was flashed by mistake and Mod 1 disappeared.
-- play-led-breathe's later step-marker variants (59177c8, 317eb6d: step fades fully out
-  in sync with Play) were NOT merged; variable-length keeps the owner's choice from the
-  main session: step breathes opposite Play, 25% floor.
+- Always flash builds from `main` (owner's decision 2026-10-22): it has Mod 1 (paging,
+  rests), the rescue combo and the breathing LEDs (25% floor, cursor step in time with
+  Play). Flashed 2026-10-22 (bf912e4), restarted fine; hands-on check pending.
+- `variable-length` is the older Mod 1 branch (cursor step breathes opposite Play).
+  `play-led-breathe` is cut from Dato's main: no Mod 1, no rescue combo. On 2026-10-21 a
+  play-led-breathe build was flashed by mistake and Mod 1 disappeared.
+- New work: branch off `main` and merge back into it.
