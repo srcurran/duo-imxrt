@@ -98,7 +98,7 @@ void note_on(uint8_t midi_note, uint8_t velocity, bool enabled) {
     envelope1.noteOn();
     envelope2.noteOn();
   } else {
-    leds(sequencer.cur_step_index() % Sequencer::NUM_STEPS) = LED_WHITE;
+    leds(sequencer.cur_page_position()) = LED_WHITE;
   }
 }
 
@@ -162,15 +162,30 @@ static void process_key(const char k, const char state) {
                    // PRESSED, HOLD, or RELEASED
     case PRESSED:
       if (k <= KEYB_9 && k >= KEYB_0) {
+        const uint8_t key = k - KEYB_0;
+        const uint8_t pages = Sequencer::MAX_STEPS / Sequencer::STEPS_PER_PAGE;
         if (in_setup) {
-          midi_set_channel((k - KEYB_0) + 1);
+          midi_set_channel(key + 1);
+        } else if (in_page_mode() && key < pages) {
+          // Page mode: keyboard key 1/2/3/4 sets the length to 8/16/24/32
+          // steps. The key doesn't play a note.
+          combo_keys_held |= (1 << key);
+          sequencer.set_length((key + 1) * Sequencer::STEPS_PER_PAGE);
         } else {
-          keyboard_set_note(SCALE[k - KEYB_0]);
+          keyboard_set_note(SCALE[key]);
         }
       } else if (k <= STEP_8 && k >= STEP_1) {
-        const uint8_t step = k - STEP_1;
-        if (!sequencer.toggle_step(step)) {
-          leds(step) = CRGB::Black;
+        const uint8_t button = k - STEP_1;
+        const uint8_t step = sequencer.step_on_cur_page(button);
+        if (in_page_mode()) {
+          // Page mode: a step button moves the cursor to that step.
+          sequencer.set_cursor(step);
+        } else if (!sequencer.is_running() && step == sequencer.cur_step_index()) {
+          // Stopped, on the cursor step: toggle it, and turning it
+          // off enters a rest (the cursor moves on to the next step).
+          sequencer.toggle_cursor_step();
+        } else if (!sequencer.toggle_step(step)) {
+          leds(button) = CRGB::Black;
         }
       } else if (k == BTN_SEQ2) {
         if (!sequencer.is_running()) {
@@ -178,20 +193,38 @@ static void process_key(const char k, const char state) {
         }
         double_speed = true;
       } else if (k == BTN_DOWN) {
-        transpose--;
-        if (transpose < -12) {
-          transpose = -24;
+        if (in_page_mode()) {
+          // Page mode: Down goes to the previous page. Stops at page 1
+          // (doesn't wrap round to the last page).
+          if (sequencer.cur_page() > 0) {
+            sequencer.set_page(sequencer.cur_page() - 1);
+          }
+        } else {
+          transpose--;
+          if (transpose < -12) {
+            transpose = -24;
+          }
         }
       } else if (k == BTN_UP) {
-        transpose++;
-        if (transpose > 12) {
-          transpose = 24;
+        if (in_page_mode()) {
+          // Page mode: Up goes to the next page. Stops at the last page
+          // (doesn't wrap round to page 1).
+          if (sequencer.cur_page() + 1 < sequencer.page_count()) {
+            sequencer.set_page(sequencer.cur_page() + 1);
+          }
+        } else {
+          transpose++;
+          if (transpose > 12) {
+            transpose = 24;
+          }
         }
       } else if (k == BTN_SEQ1) {
         if (sequencer.is_running()) {
           random_flag = true;
         } else {
-          sequencer_randomize_step_offset(sequencer);
+          // Pressed while stopped: enter page mode instead of the original
+          // one-off random jump.
+          page_mode_held = true;
         }
       } else if (k == SEQ_START) {
         sequencer_toggle_start();
@@ -219,7 +252,13 @@ static void process_key(const char k, const char state) {
       break;
     case RELEASED:
       if (k <= KEYB_9 && k >= KEYB_0) {
-        keyboard_unset_note(SCALE[k - KEYB_0]);
+        const uint16_t key_bit = 1 << (k - KEYB_0);
+        if (combo_keys_held & key_bit) {
+          // This key was used for a length combo, so it never held a note.
+          combo_keys_held &= ~key_bit;
+        } else {
+          keyboard_unset_note(SCALE[k - KEYB_0]);
+        }
       } else if (k == BTN_SEQ2) {
         double_speed = false;
       } else if (k == BTN_DOWN) {
@@ -238,6 +277,7 @@ static void process_key(const char k, const char state) {
         }
       } else if (k == BTN_SEQ1) {
         random_flag = false;
+        page_mode_held = false;
       } else if (k == SEQ_START) {
 #ifdef DEV_MODE
         if (dfu_flag == 1) {

@@ -80,7 +80,9 @@ static void sequencer_align_clock() {
 
 static void sequencer_init() {
   last_sequencer_update = micros();
-  for (int i = 0; i < Sequencer::NUM_STEPS; i++) {
+  // Only the active steps need notes: set_length() fills any steps it adds
+  // by copying the existing pattern.
+  for (int i = 0; i < sequencer.get_length(); i++) {
     sequencer.set_step_note(i, SCALE[random(9)]);
   }
 

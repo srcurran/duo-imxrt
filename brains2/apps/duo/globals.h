@@ -25,6 +25,13 @@ float osc_saw_target_frequency = 0.;
 uint8_t osc_pulse_midi_note = 0;
 int transpose = 0;
 bool random_flag = 0;
+// Page mode: Random (BTN_SEQ1) pressed and held while the sequencer is
+// stopped. Keys 1-4 set the length, Up/Down change page, and step buttons
+// move the cursor. While running, Random works as normal and this stays off.
+bool page_mode_held = false;
+// Keyboard keys (bit per key) pressed as part of a length combo. Their release
+// is swallowed too, so they never play or release a note.
+uint16_t combo_keys_held = 0;
 bool dfu_flag = 0;
 bool in_setup = true;
 
@@ -43,8 +50,9 @@ void sequencer_note_on(uint8_t midi_note, uint8_t velocity) {
 #include "shared/duo/seq.h"
 
 void sequencer_randomize_step_offset(Sequencer::Sequencer& seq) {
-  const uint8_t offset =
-      seq.get_step_offset() + random(1, (Sequencer::NUM_STEPS - 2));
+  // Jump forward by 1..length-3 steps (1..5 at the default length of 8).
+  const long max_jump = seq.get_length() > 3 ? seq.get_length() - 2 : 2;
+  const uint8_t offset = seq.get_step_offset() + random(1, max_jump);
   seq.set_step_offset(offset);
 }
 
@@ -60,3 +68,9 @@ Sequencer::Sequencer
     sequencer(Sequencer::Output::Callbacks{.note_on = sequencer_note_on,
                                            .note_off = note_off},
               sequencer_on_running_advance);
+
+// True while page mode is active (see page_mode_held). Ends as soon as the
+// sequencer starts running, even if Random is still held.
+bool in_page_mode() {
+  return page_mode_held && !sequencer.is_running();
+}
