@@ -117,7 +117,8 @@ Top picks: scales, pattern memory, punch-in effects.
 ## Which build to flash
 - Always flash builds from `main` (owner's decision 2026-10-22): it has Mod 1 (paging,
   rests), the rescue combo and the breathing LEDs (25% floor, cursor step in time with
-  Play). Flashed 2026-10-22 (bf912e4), restarted fine; hands-on check pending.
+  Play). Flashed 2026-10-22 (bf912e4); owner checked it hands-on the same day and
+  everything works as expected.
 - `variable-length` is the older Mod 1 branch (cursor step breathes opposite Play).
   `play-led-breathe` is cut from Dato's main: no Mod 1, no rescue combo. On 2026-10-21 a
   play-led-breathe build was flashed by mistake and Mod 1 disappeared.
