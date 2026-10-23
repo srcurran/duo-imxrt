@@ -225,11 +225,10 @@ static void process_key(const char k, const char state) {
             sequencer.set_page(sequencer.cur_page() - 1);
           }
         } else if (in_voice_mode()) {
-          // Accent + Down: previous voice. Stops at voice 1 (no wrap).
-          if (synth_voice > 0) {
-            synth_voice--;
-            voice_apply();
-          }
+          // Accent + Down: previous voice, round the corner from the first
+          // to the last (owner's request 2026-10-23).
+          synth_voice = synth_voice > 0 ? synth_voice - 1 : VOICE_COUNT - 1;
+          voice_apply();
         } else {
           transpose--;
           if (transpose < -12) {
@@ -244,11 +243,10 @@ static void process_key(const char k, const char state) {
             sequencer.set_page(sequencer.cur_page() + 1);
           }
         } else if (in_voice_mode()) {
-          // Accent + Up: next voice. Stops at the last voice (no wrap).
-          if (synth_voice + 1 < VOICE_COUNT) {
-            synth_voice++;
-            voice_apply();
-          }
+          // Accent + Up: next voice, round the corner from the last to the
+          // first.
+          synth_voice = synth_voice + 1 < VOICE_COUNT ? synth_voice + 1 : 0;
+          voice_apply();
         } else {
           transpose++;
           if (transpose > 12) {

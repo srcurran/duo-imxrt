@@ -146,8 +146,10 @@ Code: touch logic in `shared/duo/drum_pads.h` (pure C++, unit tested in
   ends if Play starts. Random's page mode wins if both are held. LEDs: keys 1-9 lit,
   the selected one flashes. The choice is lost at power-off (the DUO saves nothing).
 - Voices (table with each voice's Detune / Pulse Width knob roles at the top of the
-  voice code in Synth.h): 1 Original, 2 Orchid, 3 Organ, 4 Strings, 5 Acid, 6 Pluck,
-  7 FM, 8 Fold, 9 Chord. All share the filter, envelopes, bitcrusher, delay, glide and
+  voice code in Synth.h). Order since 2026-10-23 (by family, punchy to lush): 1 Original,
+  2 Acid, 3 Funk, 4 Fold, 5 Pluck, 6 FM, 7 Organ, 8 Strings, 9 Orchid, 10 Chord (was
+  Original, Orchid, Organ, Strings, Acid, Pluck, FM, Fold, Chord, Funk). Trims are looked
+  up by name (`voice_trim_db`), so reordering can't scramble levels. All share the filter, envelopes, bitcrusher, delay, glide and
   Accent. Fold: the Filter knob sets the fold amount, the filter acts as a low-pass gate.
 - Orchid voice and the idea, inspired by the Telepathic Instruments Orchid and
   Quixotic7/ChoralRootFM1 (GPL-3, so ideas only, no code taken). Owner liked the Orchid
@@ -179,7 +181,8 @@ Code: touch logic in `shared/duo/drum_pads.h` (pure C++, unit tested in
 - Branch `claude/voice-mode-while-playing` (owner's design 2026-10-23, after trying
   keys-switch-while-playing): **stopped**: Accent + key 1-9 picks the voice.
   **Playing**: keys play as normal (accented, stock); Accent + Up/Down = next/previous
-  voice (also works stopped), stopping at voice 1 / 9, no wrap. While Accent is held
+  voice (also works stopped), wrapping round the corner from the last voice to the
+  first and back (owner's request 2026-10-23; it used to stop at the ends). While Accent is held
   the keyboard LEDs show the voice keys (selected flashes), also while playing.
   Flashed 2026-10-23 (`restore/duo_voice-updown.bin`), not yet checked hands-on.
 - Owner's dB-meter test 2026-10-23 (NIOSH SLM, LAeq per voice, same sequence) vs
@@ -236,7 +239,7 @@ Code: touch logic in `shared/duo/drum_pads.h` (pure C++, unit tested in
   (odd harmonics strong, some even), notes 55-87 Hz, the filter shut to the
   fundamental within ~100 ms, the level ~-5 dB over 150 ms while held.
 - Voice 10 = **Funk**, on keyboard key 10 (VOICE_COUNT is now 10: every key picks a
-  voice in voice mode; Up/Down stops at 10). Pulse (0.5) + a little saw (0.25) an
+  voice in voice mode; Up/Down now wraps round). Funk is now key 3 (see the order above. Pulse (0.5) + a little saw (0.25) an
   octave down; amp: 1 ms attack, 200 ms decay to 0.6; filter env snaps open and
   shuts (sustain 0). **Detune** = filter snap 30-400 ms on a curve (noon ~120 ms
   matches the clip), **Pulse Width** = square to thin pulse. The Filter knob is

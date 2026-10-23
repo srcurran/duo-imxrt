@@ -35,22 +35,26 @@ uint16_t combo_keys_held = 0;
 // Voices: hold Accent (voice mode) and press key 1-10 (stopped) or Up/Down.
 // Original is the stock DUO sound and the default at power-on. Each voice is
 // described in Synth.h (voice_apply).
+// Ordered by family (owner's request 2026-10-23), punchy to lush: mono synths
+// and basses, plucked and struck, sustained, lush pads and chords. Nothing
+// depends on the numbers: code uses the names (VOICE_TRIM_DB is by name too).
 enum Voice : uint8_t {
-  VOICE_ORIGINAL = 0,
-  VOICE_ORCHID,
-  VOICE_ORGAN,
-  VOICE_STRINGS,
-  VOICE_ACID,
-  VOICE_PLUCK,
-  VOICE_FM,
-  VOICE_FOLD,
-  VOICE_CHORD,
-  VOICE_FUNK,
-  VOICE_COUNT  // 10: one per keyboard key
+  VOICE_ORIGINAL = 0,  // key 1   stock DUO
+  VOICE_ACID,          // key 2   mono synth / bass
+  VOICE_FUNK,          // key 3   bass
+  VOICE_FOLD,          // key 4   mono synth (west coast)
+  VOICE_PLUCK,         // key 5   plucked
+  VOICE_FM,            // key 6   struck: keys, bells
+  VOICE_ORGAN,         // key 7   sustained
+  VOICE_STRINGS,       // key 8   sustained pad
+  VOICE_ORCHID,        // key 9   lush pad
+  VOICE_CHORD,         // key 10  lush chords
+  VOICE_COUNT          // 10: one per keyboard key
 };
 uint8_t synth_voice = VOICE_ORIGINAL;
 // Voice mode: Accent held. Stopped: keys 1-10 pick a voice. Stopped or
-// playing: Up/Down step to the next/previous voice (instead of transposing).
+// playing: Up/Down step to the next/previous voice (instead of transposing),
+// wrapping round from the last voice to the first and back.
 // While playing the keys play as normal (accented).
 bool voice_mode_held = false;
 bool dfu_flag = 0;
