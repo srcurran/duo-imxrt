@@ -296,7 +296,9 @@ Top picks: scales, pattern memory, punch-in effects.
 - Always flash builds from `main` (owner's decision 2026-10-22): it has Mod 1 (paging,
   rests), the rescue combo and the breathing LEDs (25% floor, cursor step in time with
   Play), perform mode, Mod 2 (drum pads) and the voices (Accent + keys / Up/Down).
-  Flashed 2026-10-23: main cd72c4e (swells follow the gate knob,
+  Flashed 2026-10-23: main a6392f7 (no silent spots across octaves/filter, softer
+  Organ, `restore/duo_main_a6392f7.bin`; label verified). Before it: cd72c4e (swells
+  follow the gate knob,
   `restore/duo_main_cd72c4e.bin`; label verified over USB with
   `tools/updater/firmware_info.py`). Before it: 5541b04 (owner: 3 still sharp, 4 still
   dropped out). Before it: 34438c6 (owner tried it: Organ
