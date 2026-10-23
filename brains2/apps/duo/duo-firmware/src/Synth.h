@@ -261,7 +261,8 @@ static const float FM_MAX_DEPTH = 0.3f;       // modulator at full Pulse Width
 static const float CHORD_NOTE_LEVEL = 0.22f;  // was 0.5 per note
 static const float ACID_LEVEL = 0.57f;        // was 0.9 (-4 dB)
 static const float PLUCK_LEVEL = 0.6f;        // mixer1 ch 2, was 0.8 (-2.5 dB)
-static const float FOLD_OUTPUT = 11500.0f;    // folder output peak, was 16000 (-3 dB)
+static const float FOLD_OUTPUT = 6800.0f;     // folder output peak: 16000, then
+                                              // 11500; dB meter: still +2.7 vs Original
 
 // Picks one of `count` entries from a 0-1023 knob.
 static inline int knob_index(const int knob, const int count) {
