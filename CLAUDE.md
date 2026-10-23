@@ -135,6 +135,118 @@ Code: touch logic in `shared/duo/drum_pads.h` (pure C++, unit tested in
 - Later: shape drums with the knobs while a pad is held, record pad hits into the
   sequencer, send drums over MIDI.
 
+## Voices (branch `claude/duo-voice-orchid-style-972622`)
+- Owner's design, 2026-10-23: keep the original voice. Hold **Accent** ("boost" pad)
+  while **stopped** => voice mode: keyboard keys 1-9 pick the voice; key 1 = Original
+  (default at power-on). Like page mode, the keys don't play (key 10 still does) and it
+  ends if Play starts. Random's page mode wins if both are held. LEDs: keys 1-9 lit,
+  the selected one flashes. The choice is lost at power-off (the DUO saves nothing).
+- Voices (table with each voice's Detune / Pulse Width knob roles at the top of the
+  voice code in Synth.h): 1 Original, 2 Orchid, 3 Organ, 4 Strings, 5 Acid, 6 Pluck,
+  7 FM, 8 Fold, 9 Chord. All share the filter, envelopes, bitcrusher, delay, glide and
+  Accent. Fold: the Filter knob sets the fold amount, the filter acts as a low-pass gate.
+- Orchid voice and the idea, inspired by the Telepathic Instruments Orchid and
+  Quixotic7/ChoralRootFM1 (GPL-3, so ideas only, no code taken). Owner liked the Orchid
+  voice hands-on 2026-10-23 and asked for all the others.
+- Code: `voice_apply()` (fixed settings, starts from `voice_reset()` = Original),
+  `voice_update_sources()` (knobs, every loop), `voice_note_on/off()` (Pluck strike,
+  FM modulator envelope), all in Synth.h. Extra sources osc3, osc4, fm_mod ->
+  fm_mod_env -> fm_carrier (Teensy phase modulation), pluck -> voice_mixer -> mixer1
+  ch 2. fold_fx sits between mixer1 and filter1, lush_fx (chorus + reverb, per-voice
+  `LushFx::Params`) after bitcrusher1. DSP in plain C++, host-tested:
+  `shared/duo/lush_fx.h`, `pluck_fx.h` (Karplus-Strong), `fold_fx.h`.
+- Original voice is unchanged: the new sources are silent and idle (amplitude 0 / not
+  enabled) and fold_fx and lush_fx pass blocks through untouched.
+- Envelope times past ~1.4 s round the step to zero and the note never ends
+  (`LinearEnvelope::calcRate`), so keep attack/release under that.
+- RAM: reverb runs at 22.05 kHz; Pluck's 4 KB loop buffer is in OCRAM (DMAMEM, not
+  zeroed at boot, cleared on enable). DTCM (m_data) 24.4 KB of 32 KB, OCRAM 54.5 of
+  64 KB (mostly AudioMemory). CPU not measured; estimated well under 10%.
+- Unit tests: `lush_fx_test`, `voice_fx_test` (pluck tuning/decay/ring length, fold,
+  organ vibrato).
+- Levels (2026-10-23): set by the Mac emulator (below) as a per-voice trim table,
+  `VOICE_TRIM_DB` in Synth.h, applied at each voice's input to the filter (Fold: at
+  the folder's output). Each voice's median loudness (LUFS) across the emulator's knob
+  sweep now matches Original's within 1 dB; no audible clipping (Pluck: 3-8 single
+  samples per 4 s on bright Accent strikes; -4 dB would remove them but make Pluck
+  quieter). Earlier rounds by ear (FM depth halved, Chord/Acid/Pluck/Fold cuts) remain
+  as the voices' own level constants underneath. Flashed 2026-10-23
+  (`restore/duo_voice-levels.bin`), not yet checked by ear.
+- Branch `claude/voice-mode-while-playing` (owner's design 2026-10-23, after trying
+  keys-switch-while-playing): **stopped**: Accent + key 1-9 picks the voice.
+  **Playing**: keys play as normal (accented, stock); Accent + Up/Down = next/previous
+  voice (also works stopped), stopping at voice 1 / 9, no wrap. While Accent is held
+  the keyboard LEDs show the voice keys (selected flashes), also while playing.
+  Flashed 2026-10-23 (`restore/duo_voice-updown.bin`), not yet checked hands-on.
+- Owner's dB-meter test 2026-10-23 (NIOSH SLM, LAeq per voice, same sequence) vs
+  Original: Orchid -9, Organ -8, Strings -3.5, Acid -8, Pluck -10, FM -2, Fold +2.7,
+  Chord -3. Owner only found Fold loud by ear, so Fold cut 4.5 dB (FOLD_OUTPUT 6800,
+  b3dbfdd); the others left alone. A-weighting under-reads bass (Organ, Acid) and
+  short sequenced notes never reach Orchid's slow attack, so trust ears over it.
+- Flashed 2026-10-23: 540b6bb (Original + Orchid only, `restore/duo_voices_540b6bb.bin`),
+  then 999d0ce (all nine voices, `restore/duo_voices_999d0ce.bin`, sha256 9c0d012c...).
+  Not yet checked hands-on. Those flashes replaced the drum-pads build; voices were
+  then merged into main with drum pads (2026-10-23).
+
+## Mac emulator (tools/emu, 2026-10-23)
+- Runs the real firmware audio code on the Mac: Teensy audio objects, AudioStream.cpp,
+  Synth.h, Pitch.h, globals.h, seq.cpp. `tools/emu/shim/host_platform.h` replaces the
+  M7 DSP instructions (dspinst.h) with exact C versions and makes interrupts no-ops;
+  the code is built with __ARM_ARCH_7EM__ so it takes the DUO's own code paths.
+- Build: `tools/emu/build.sh` (clang, ~5 s). Render: `tools/emu/build/emu key=3
+  filter=512 resonance=512 detune=512 pw=512 release=512 accent=0 gate_ms=60
+  step_ms=125 notes=49,54,58 wav=out.wav` (key=1..9 = voice). Prints LUFS, speaker
+  LUFS (measured speaker model), peak, clipped samples. ~1000x real time.
+- Sweep: `python3 tools/emu/sweep.py` (5832 renders: 9 voices x filter, resonance,
+  detune, pw at 3 values x release 2 x Accent x 16ths/held notes, ~8 s).
+  `--check` exits 1 if a voice's median is >1.5 dB off Original or a render clips
+  >10 samples. Run it after any sound change.
+- Checked: Original's pitches (pulse an octave down, saw at the Detune interval), FM
+  harmonics and Chord intervals come out exactly right.
+- Note on/off synth code moved from main.cpp into Synth.h (`synth_note_pitch`,
+  `synth_note_start`, `synth_note_stop`) so the emulator shares it; main.cpp still
+  sends MIDI in the same place.
+- Tone test (2026-10-23): `brains2/apps/duo/tone_test.h`, in builds made with
+  `DUO_TONE_TEST=1` in the environment (`DUO_TONE_TEST=1 ../scripts/build.sh duo
+  -DBOARD=DUO_BRAINS_2.3`); an env var so it can't stick in the CMake cache. Press Play:
+  start signal (two 1 kHz beeps), 14 equal-level sine tones 100 Hz-8 kHz (4 s + 2 s
+  gap), 8 s gap, voices 1-9 with knobs at noon (6 s + 2 s gap), end beep; ~2:55. Play
+  LED orange, step LEDs = progress, voice key lit. Knobs, sequencer, drums ignored;
+  USB/MIDI keep running. Image: `restore/duo_tone-test.bin`. `emu test=1 wav=...`
+  runs the identical test and prints the timetable. Analysis:
+  `tools/emu/read_meter.py recording.mp4 > meter.csv` (macOS text recognition on the
+  NIOSH SLM screen), then `uv run --with numpy --with scipy python
+  tools/emu/tone_test_analysis.py steps.csv test.wav meter.csv` -> speaker+mic
+  response per frequency and each voice measured vs emulated. Checked end to end with
+  a fake recording (recovered a 300 Hz roll-off within ~0.5 dB).
+- Found with the emulator: (1) the state-variable filter goes unstable above ~8.4 kHz
+  at minimum resonance (the test's tone path uses 7 kHz); (2) the reverb multiplied the
+  pulse wave's DC offset to 15% of full scale in Orchid; LushFx now has a ~10 Hz DC
+  blocker (unit-tested), Orchid's peak dropped 0.45 -> 0.30.
+- Speaker measured 2026-10-23 with the tone test (owner's screen recording of NIOSH
+  SLM; the recording's own audio agreed within ~1 dB from 300 Hz up, no distortion
+  above 300 Hz). Response re 1 kHz: 100 Hz -55, 150 -29, 200 -16, 300 -3, 400-6000 Hz
+  roughly flat with dips at 700 (-9), 1500 (-11), 3000 (-17) (likely room/phone
+  position), 8 kHz -28. At 100-150 Hz the speaker mostly makes harmonics. The test's
+  1 kHz tone read ~103 dBA near the phone: loud; lower VOLUME/TONE_LEVEL if re-run.
+  Emulator speaker model (lufs_spk) is now this shape: 6th-order high-pass 270 Hz +
+  4th-order low-pass 6.5 kHz, dips left out. With it, every voice's median is within
+  ~1 dB of Original (Organ -1.1); no trim changes needed.
+- Voices at noon knobs, measured on the DUO vs Original (dBA): Orchid +1.1, Organ
+  +2.9, Strings +1.6, Acid -1.7, Pluck +4.7, FM -2.3, Fold +2.0, Chord +3.1. The
+  emulator predicts these within ~1.5 dB except a ~2 dB offset on Original's segment
+  (Orchid, nearly the same sound, differed by 1.5 dB: measurement noise of one phone
+  position) and Pluck (random strike).
+- Pluck clipping (Accent, bright, filter knob high): the strike reaches ~95% at the
+  source and the filter peaks near its top on that noise burst; not the reverb (emu
+  `nolush=1` and `probe=1` showed it). Left as is: 3-8 single samples per 4 s.
+  Scaling the strike by ring length was tried and dropped (spread is mostly brightness
+  and filter; the +3 dB on short rings made clipping worse).
+- Normal build flashed back 2026-10-23 (`restore/duo_voice-levels.bin`, includes the
+  Orchid DC blocker).
+- Limits: the speaker model leaves out room/position dips, and a single phone position
+  is good to ~1.5 dB; ears have the final say.
+
 ## Feature backlog (from other small synths)
 Scales/root (keys are fixed to `SCALE[]` = black-key pentatonic in `globals.h`),
 arp modes, swing, per-step accent/slide, probability/mutate, ratchets,

@@ -23,6 +23,14 @@ target_include_directories(${EXECUTABLE_NAME} PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/../../core/adapters/fast_led
 )
 
+# Tone test build (brains2/apps/duo/tone_test.h): set DUO_TONE_TEST=1 in the
+# environment when building. An environment variable rather than a CMake
+# option, so it can't linger in the CMake cache and leak into normal builds.
+if("$ENV{DUO_TONE_TEST}" STREQUAL "1")
+  message(STATUS "*** TONE TEST BUILD ***")
+  target_compile_definitions(${EXECUTABLE_NAME} PRIVATE TONE_TEST=1)
+endif()
+
 set(WITH_USB true)
 include(${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/build_app.cmake)
 

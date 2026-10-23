@@ -68,6 +68,24 @@ static const int led_order[NUM_LEDS] = {1,  2,  3,  4,  5,  6,  7,  8,  9,  10,
 #define SK6812 1
 #include "duo-firmware/src/Leds.h"
 #include "shared/duo/Pitch.h"
+#ifdef TONE_TEST
+#include "tone_test.h"
+
+// Tone test LEDs: Play orange, step LEDs fill up as a progress bar, and in
+// the voice section the current voice's keyboard key lights up.
+static void tone_test_leds() {
+  led_play = CRGB(255, 80, 0);
+  const int lit = (ToneTest::current_step() + 1) * 8 / ToneTest::NUM_STEPS;
+  for (int l = 0; l < 8; l++) {
+    leds(l) = l < lit ? CRGB(255, 80, 0) : CRGB::Black;
+  }
+  const ToneTest::Step& s = ToneTest::STEPS[ToneTest::current_step()];
+  for (int k = 0; k < 10; k++) {
+    physical_leds[k + 9] =
+        (s.kind == ToneTest::VOICE && k == s.voice) ? COLORS[SCALE[k] % 24] : CRGB::Black;
+  }
+}
+#endif
 
 #include "duo-firmware/src/DrumSynth.h"
 #include "drums.h"
@@ -84,19 +102,9 @@ void note_on(uint8_t midi_note, uint8_t velocity, bool enabled) {
   note_is_playing = midi_note;
 
   if (enabled) {
-    AudioNoInterrupts();
-
-    dc1.amplitude(velocity / 127.); // DC amplitude controls filter env amount.
-    osc_pulse_midi_note = midi_note;
-    osc_pulse_target_frequency = (int)midi_note_to_frequency(midi_note);
-    // Detune OSC2
-    osc_saw.frequency(detune(osc_pulse_midi_note, detune_amount));
-
-    AudioInterrupts();
-
+    synth_note_pitch(midi_note, velocity);
     MIDI::sendNoteOn(midi_note, velocity, MIDI_CHANNEL);
-    envelope1.noteOn();
-    envelope2.noteOn();
+    synth_note_start(velocity);
   } else {
     leds(sequencer.cur_page_position()) = LED_WHITE;
   }
@@ -105,8 +113,7 @@ void note_on(uint8_t midi_note, uint8_t velocity, bool enabled) {
 void note_off() {
   if (note_is_playing) {
     MIDI::sendNoteOff(note_is_playing, 0, MIDI_CHANNEL);
-    envelope1.noteOff();
-    envelope2.noteOff();
+    synth_note_stop();
     note_is_playing = 0;
   }
 }
@@ -125,7 +132,17 @@ static void pots_read() {
 
   synth.glide = pinRead(GLIDE_PIN);
   synth.crush = pinRead(BITC_PIN);
-  synth.accent = pinRead(ACCENT_PIN);
+  // Accent held => voice mode (stopped or playing), until it's let go. The
+  // pad has to read released for 30 ms first, so a flicker doesn't end it.
+  static unsigned long accent_seen_time = 0;
+  const bool accent = pinRead(ACCENT_PIN);
+  if (accent) {
+    voice_mode_held = true;
+    accent_seen_time = millis();
+  } else if (millis() - accent_seen_time > 30) {
+    voice_mode_held = false;
+  }
+  synth.accent = accent;
   synth.delay = pinRead(DELAY_PIN);
 }
 
@@ -171,6 +188,14 @@ static void process_key(const char k, const char state) {
           // steps. The key doesn't play a note.
           combo_keys_held |= (1 << key);
           sequencer.set_length((key + 1) * Sequencer::STEPS_PER_PAGE);
+        } else if (in_voice_mode() && !sequencer.is_running() &&
+                   key < VOICE_COUNT) {
+          // Voice mode while stopped: keyboard key 1-9 picks the voice (see
+          // Synth.h). The key doesn't play a note. While playing, keys play
+          // as normal and Up/Down change voice instead.
+          combo_keys_held |= (1 << key);
+          synth_voice = key;
+          voice_apply();
         } else {
           keyboard_set_note(SCALE[key]);
         }
@@ -199,6 +224,12 @@ static void process_key(const char k, const char state) {
           if (sequencer.cur_page() > 0) {
             sequencer.set_page(sequencer.cur_page() - 1);
           }
+        } else if (in_voice_mode()) {
+          // Accent + Down: previous voice. Stops at voice 1 (no wrap).
+          if (synth_voice > 0) {
+            synth_voice--;
+            voice_apply();
+          }
         } else {
           transpose--;
           if (transpose < -12) {
@@ -211,6 +242,12 @@ static void process_key(const char k, const char state) {
           // (doesn't wrap round to page 1).
           if (sequencer.cur_page() + 1 < sequencer.page_count()) {
             sequencer.set_page(sequencer.cur_page() + 1);
+          }
+        } else if (in_voice_mode()) {
+          // Accent + Up: next voice. Stops at the last voice (no wrap).
+          if (synth_voice + 1 < VOICE_COUNT) {
+            synth_voice++;
+            voice_apply();
           }
         } else {
           transpose++;
@@ -227,6 +264,18 @@ static void process_key(const char k, const char state) {
           page_mode_held = true;
         }
       } else if (k == SEQ_START) {
+#ifdef TONE_TEST
+        // Tone test build: Play starts (or stops) the test.
+        if (sequencer.is_running()) {
+          sequencer_stop();
+        }
+        if (ToneTest::is_running()) {
+          ToneTest::stop();
+        } else {
+          ToneTest::start();
+        }
+        break;
+#endif
         if (in_page_mode()) {
           // Random + Play from stopped: start in perform mode. Keys play
           // over the sequence without recording. Stop ends perform mode.
@@ -361,9 +410,25 @@ static void main_loop(){
       if (millis() - frame_time > frame_interval) {
         frame_time = millis();
         led_update();
+#ifdef TONE_TEST
+        if (ToneTest::is_running()) {
+          tone_test_leds();
+        }
+#endif
         midi_send_cc();
         FastLED.show();
       } else {
+#ifdef TONE_TEST
+        if (ToneTest::is_running()) {
+          // The test drives the synth itself; knobs, sequencer and drums rest.
+          DatoUSB::background_update();
+          MIDI::read(MIDI_CHANNEL);
+          ToneTest::update();
+          headphone_jack_check();
+          keys_scan();
+          continue;
+        }
+#endif
         DatoUSB::background_update();
         MIDI::read(MIDI_CHANNEL);
         pitch_update(); // ~30us
