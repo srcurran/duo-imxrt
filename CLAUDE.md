@@ -137,16 +137,14 @@ Full plan doc: https://claude.ai/code/artifact/c8336b8f-97ed-4703-bb62-ebb3c1ede
   64 KB (mostly AudioMemory). CPU not measured; estimated well under 10%.
 - Unit tests: `lush_fx_test`, `voice_fx_test` (pluck tuning/decay/ring length, fold,
   organ vibrato).
-- Levels (2026-10-23): owner found 5 Acid, 6 Pluck, 7 FM (clipping) and 8 Fold loud,
-  1-4 fine, 9 Chord fine after a cut. Now set as constants at the top of the voice code
-  in Synth.h (FM_CARRIER_LEVEL, FM_MAX_DEPTH, CHORD_NOTE_LEVEL, ACID_LEVEL,
-  PLUCK_LEVEL, FOLD_OUTPUT). FM's "clipping" was likely too much FM depth (aliasing),
-  so its depth range is halved. `tools/voice_levels.py` simulates each voice and
-  prints A-weighted loudness vs Original (`uv run --with numpy --with scipy python
-  tools/voice_levels.py`). It tracks the owner's ears for FM/Fold/Chord but reads
-  Acid and Pluck quieter than they sound, so trust ears over it. Keep its settings in
-  step with Synth.h. Flashed 2026-10-23 (`restore/duo_voice-levels.bin`), not yet
-  checked by ear.
+- Levels (2026-10-23): set by the Mac emulator (below) as a per-voice trim table,
+  `VOICE_TRIM_DB` in Synth.h, applied at each voice's input to the filter (Fold: at
+  the folder's output). Each voice's median loudness (LUFS) across the emulator's knob
+  sweep now matches Original's within 1 dB; no audible clipping (Pluck: 3-8 single
+  samples per 4 s on bright Accent strikes; -4 dB would remove them but make Pluck
+  quieter). Earlier rounds by ear (FM depth halved, Chord/Acid/Pluck/Fold cuts) remain
+  as the voices' own level constants underneath. Flashed 2026-10-23
+  (`restore/duo_voice-levels.bin`), not yet checked by ear.
 - Branch `claude/voice-mode-while-playing` (owner's design 2026-10-23, after trying
   keys-switch-while-playing): **stopped**: Accent + key 1-9 picks the voice.
   **Playing**: keys play as normal (accented, stock); Accent + Up/Down = next/previous
@@ -163,6 +161,28 @@ Full plan doc: https://claude.ai/code/artifact/c8336b8f-97ed-4703-bb62-ebb3c1ede
   Not yet checked hands-on. Each flash replaced a drum-pads build from another
   session; drum pads are done and merged into main (d77e027) but not in this branch,
   so the DUO has no drum pads until voices is merged into main and main is flashed.
+
+## Mac emulator (tools/emu, 2026-10-23)
+- Runs the real firmware audio code on the Mac: Teensy audio objects, AudioStream.cpp,
+  Synth.h, Pitch.h, globals.h, seq.cpp. `tools/emu/shim/host_platform.h` replaces the
+  M7 DSP instructions (dspinst.h) with exact C versions and makes interrupts no-ops;
+  the code is built with __ARM_ARCH_7EM__ so it takes the DUO's own code paths.
+- Build: `tools/emu/build.sh` (clang, ~5 s). Render: `tools/emu/build/emu key=3
+  filter=512 resonance=512 detune=512 pw=512 release=512 accent=0 gate_ms=60
+  step_ms=125 notes=49,54,58 wav=out.wav` (key=1..9 = voice). Prints LUFS, speaker
+  LUFS (150 Hz high-pass), peak, clipped samples. ~1000x real time.
+- Sweep: `python3 tools/emu/sweep.py` (5832 renders: 9 voices x filter, resonance,
+  detune, pw at 3 values x release 2 x Accent x 16ths/held notes, ~8 s).
+  `--check` exits 1 if a voice's median is >1.5 dB off Original or a render clips
+  >10 samples. Run it after any sound change.
+- Checked: Original's pitches (pulse an octave down, saw at the Detune interval), FM
+  harmonics and Chord intervals come out exactly right.
+- Note on/off synth code moved from main.cpp into Synth.h (`synth_note_pitch`,
+  `synth_note_start`, `synth_note_stop`) so the emulator shares it; main.cpp still
+  sends MIDI in the same place.
+- Limits: no speaker or room model. Fitting a speaker bass cut-off to the owner's
+  dB-meter test didn't help (knob positions in that test unknown; its Original segment
+  read ~8 dB high), so levels match the electrical output; ears have the final say.
 
 ## Mod 2: drum pads (planned)
 Code: `brains2/apps/duo/duo-firmware/src/DrumSynth.h`, `brains2/apps/duo/boards/*/drums.h`.

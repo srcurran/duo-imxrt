@@ -84,22 +84,9 @@ void note_on(uint8_t midi_note, uint8_t velocity, bool enabled) {
   note_is_playing = midi_note;
 
   if (enabled) {
-    AudioNoInterrupts();
-
-    dc1.amplitude(velocity / 127.); // DC amplitude controls filter env amount.
-    osc_pulse_midi_note = midi_note;
-    osc_pulse_target_frequency = (int)midi_note_to_frequency(midi_note);
-    // Detune OSC2 (the other voices set their oscillators in synth_update)
-    if (synth_voice == VOICE_ORIGINAL || synth_voice == VOICE_ORCHID) {
-      osc_saw.frequency(detune(osc_pulse_midi_note, detune_amount));
-    }
-
-    AudioInterrupts();
-
+    synth_note_pitch(midi_note, velocity);
     MIDI::sendNoteOn(midi_note, velocity, MIDI_CHANNEL);
-    envelope1.noteOn();
-    envelope2.noteOn();
-    voice_note_on(velocity);
+    synth_note_start(velocity);
   } else {
     leds(sequencer.cur_page_position()) = LED_WHITE;
   }
@@ -108,9 +95,7 @@ void note_on(uint8_t midi_note, uint8_t velocity, bool enabled) {
 void note_off() {
   if (note_is_playing) {
     MIDI::sendNoteOff(note_is_playing, 0, MIDI_CHANNEL);
-    envelope1.noteOff();
-    envelope2.noteOff();
-    voice_note_off();
+    synth_note_stop();
     note_is_playing = 0;
   }
 }

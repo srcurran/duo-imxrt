@@ -270,14 +270,37 @@ static inline int knob_index(const int knob, const int count) {
   return i < 0 ? 0 : (i >= count ? count - 1 : i);
 }
 
+// Per-voice level trim in dB: each voice's median loudness matches
+// Original's across the emulator's knob sweep (tools/emu/sweep.py, LUFS,
+// 5832 renders). Applied to the voice's input to the filter (mixer1), so
+// every stage after it gets the headroom too; for Fold, to the folder's
+// output instead (its input level sets how hard it folds).
+static const float VOICE_TRIM_DB[VOICE_COUNT] = {
+    0.0f,   // Original
+    0.0f,   // Orchid   (-0.7 dB, close enough)
+    -7.5f,  // Organ
+    -5.0f,  // Strings
+    -4.5f,  // Acid
+    -2.0f,  // Pluck    (-4 would stop all clipping; -2 leaves 3-8
+            //           clipped samples per 4 s on bright Accent strikes)
+    -7.0f,  // FM
+    -5.5f,  // Fold
+    -3.0f,  // Chord
+};
+// The selected voice's mixer1 gains before the trim, and its fold trim.
+static float voice_mix[3] = {0.2f, 0.4f, 0.0f};
+static float fold_trim = 1.0f;
+
+static void voice_gain(const int channel, const float gain) { voice_mix[channel] = gain; }
+
 // Puts everything back to the Original voice: exactly what audio_init() set.
 static void voice_reset() {
   osc_saw.begin(WAVEFORM_BANDLIMIT_SAWTOOTH);
   osc_pulse.begin(WAVEFORM_BANDLIMIT_PULSE);
   osc_pulse.amplitude(0.5f);
-  mixer1.gain(0, 0.2f);
-  mixer1.gain(1, 0.4f);
-  mixer1.gain(2, 0.0f);
+  voice_gain(0, 0.2f);
+  voice_gain(1, 0.4f);
+  voice_gain(2, 0.0f);
   osc3.amplitude(0.0f);
   osc4.amplitude(0.0f);
   fm_mod.amplitude(0.0f);
@@ -310,8 +333,8 @@ void voice_apply() {
       osc_pulse.begin(WAVEFORM_SINE);
       osc_saw.begin(WAVEFORM_SINE);
       osc3.begin(WAVEFORM_SINE);
-      mixer1.gain(0, 0.4f);
-      mixer1.gain(2, 0.4f);
+      voice_gain(0, 0.4f);
+      voice_gain(2, 0.4f);
       envelope1.attack(4);
       lush_fx.set(ORGAN_LUSH);  // fast, shallow: an organ's vibrato-chorus
       lush_fx.enable(true);
@@ -320,8 +343,8 @@ void voice_apply() {
       osc_pulse.begin(WAVEFORM_BANDLIMIT_SAWTOOTH);
       osc3.begin(WAVEFORM_BANDLIMIT_SAWTOOTH);
       osc4.begin(WAVEFORM_BANDLIMIT_SAWTOOTH);
-      mixer1.gain(0, 0.4f);
-      mixer1.gain(2, 0.4f);
+      voice_gain(0, 0.4f);
+      voice_gain(2, 0.4f);
       envelope1.attack(150);
       envelope2.attack(400);
       envelope2.release(800);
@@ -331,7 +354,7 @@ void voice_apply() {
     case VOICE_ACID:
       osc_pulse.begin(WAVEFORM_BANDLIMIT_SAWTOOTH);
       osc_saw.begin(WAVEFORM_BANDLIMIT_SQUARE);
-      mixer1.gain(0, 0.4f);
+      voice_gain(0, 0.4f);
       filter1.octaveControl(5);  // a deeper filter sweep
       envelope2.attack(2);
       envelope2.sustain(0.0f);  // the filter snaps open, then decays shut
@@ -339,7 +362,7 @@ void voice_apply() {
       break;
     case VOICE_PLUCK:
       osc_pulse.amplitude(0.0f);
-      mixer1.gain(2, PLUCK_LEVEL);
+      voice_gain(2, PLUCK_LEVEL);
       envelope1.attack(1);
       pluck.enable(true);
       lush_fx.set(PLUCK_LUSH);
@@ -347,15 +370,15 @@ void voice_apply() {
       break;
     case VOICE_FM:
       osc_pulse.amplitude(0.0f);
-      mixer1.gain(2, 0.8f);
+      voice_gain(2, 0.8f);
       lush_fx.set(FM_LUSH);
       lush_fx.enable(true);
       break;
     case VOICE_FOLD:
       osc_pulse.begin(WAVEFORM_TRIANGLE);
       osc_saw.begin(WAVEFORM_SINE);
-      mixer1.gain(0, 0.5f);
-      mixer1.gain(1, 0.5f);
+      voice_gain(0, 0.5f);
+      voice_gain(1, 0.5f);
       fold_fx.enable(true);
       // The filter acts like a low-pass gate: low at rest, opened by the
       // envelope (which follows the release knob, see synth_update).
@@ -366,8 +389,8 @@ void voice_apply() {
       osc_pulse.begin(WAVEFORM_BANDLIMIT_SAWTOOTH);
       osc3.begin(WAVEFORM_BANDLIMIT_SAWTOOTH);
       osc4.begin(WAVEFORM_BANDLIMIT_SAWTOOTH);
-      mixer1.gain(0, 0.4f);
-      mixer1.gain(2, 0.4f);
+      voice_gain(0, 0.4f);
+      voice_gain(2, 0.4f);
       envelope1.attack(20);
       envelope2.attack(120);
       envelope2.release(600);
@@ -376,6 +399,13 @@ void voice_apply() {
       break;
     default:  // VOICE_ORIGINAL
       break;
+  }
+  // Level trim (see VOICE_TRIM_DB). Original: x1, so its gains are unchanged.
+  const float trim = powf(10.0f, VOICE_TRIM_DB[synth_voice] / 20.0f);
+  const float mix_trim = synth_voice == VOICE_FOLD ? 1.0f : trim;
+  fold_trim = synth_voice == VOICE_FOLD ? trim : 1.0f;
+  for (int i = 0; i < 3; i++) {
+    mixer1.gain(i, voice_mix[i] * mix_trim);
   }
   AudioInterrupts();
 }
@@ -392,6 +422,39 @@ void voice_note_on(const uint8_t velocity) {
 }
 
 void voice_note_off() { fm_mod_env.noteOff(); }
+
+// The synth side of a note, shared by note_on()/note_off() in main.cpp and
+// the Mac emulator (tools/emu). A note on is two steps so main.cpp can send
+// MIDI in between, as it always has: set the pitch, then start the envelopes.
+float detune(int note, int amount);   // Pitch.h
+extern int detune_amount;             // Pitch.h
+float midi_note_to_frequency(int x);  // MidiFunctions.h
+
+void synth_note_pitch(const uint8_t midi_note, const uint8_t velocity) {
+  AudioNoInterrupts();
+
+  dc1.amplitude(velocity / 127.); // DC amplitude controls filter env amount.
+  osc_pulse_midi_note = midi_note;
+  osc_pulse_target_frequency = (int)midi_note_to_frequency(midi_note);
+  // Detune OSC2 (the other voices set their oscillators in synth_update)
+  if (synth_voice == VOICE_ORIGINAL || synth_voice == VOICE_ORCHID) {
+    osc_saw.frequency(detune(osc_pulse_midi_note, detune_amount));
+  }
+
+  AudioInterrupts();
+}
+
+void synth_note_start(const uint8_t velocity) {
+  envelope1.noteOn();
+  envelope2.noteOn();
+  voice_note_on(velocity);
+}
+
+void synth_note_stop() {
+  envelope1.noteOff();
+  envelope2.noteOff();
+  voice_note_off();
+}
 
 // Oscillator pitches and levels for the new voices (not Original/Orchid),
 // from the played note and the Detune and Pulse Width knobs. Runs every loop
@@ -447,7 +510,7 @@ static void voice_update_sources(const float note) {
       osc_saw.frequency(osc_saw_frequency);  // the stock detune interval
       osc_saw.amplitude(pw * 0.4f);
       fold_fx.amount(synth.filter / 1023.0f);
-      fold_fx.output_level(FOLD_OUTPUT);
+      fold_fx.output_level(FOLD_OUTPUT * fold_trim);
       break;
     case VOICE_CHORD: {
       const float* r = CHORD_RATIOS[knob_index(synth.detune, 8)];
