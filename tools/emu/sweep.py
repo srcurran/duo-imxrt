@@ -26,7 +26,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 EMU = os.path.join(HERE, "build", "emu")
 VOICES = ["Original", "Orchid", "Organ", "Strings", "Acid", "Pluck", "FM", "Fold", "Chord"]
 FIELDS = ["voice", "filter", "resonance", "release", "detune", "pw", "accent", "gate_ms",
-          "step_ms", "lufs", "lufs_spk", "peak", "clipped"]
+          "step_ms", "lufs", "lufs_spk", "peak", "clipped", "transpose"]
 
 if "--quick" in sys.argv:
     GRID = dict(filter=[512], resonance=[512], detune=[512], pw=[512], release=[512],
@@ -34,6 +34,7 @@ if "--quick" in sys.argv:
 else:
     GRID = dict(filter=[128, 512, 896], resonance=[0, 512, 1023], detune=[128, 512, 896],
                 pw=[128, 512, 896], release=[256, 768], accent=[0, 1],
+                transpose=[-12, 0, 12],  # Up/Down octaves
                 style=[(125, 10), (125, 30), (125, 60), (1000, 800)])
                 # (step_ms, gate_ms): 16ths at the gate knob's minimum (10 ms),
                 # very short, normal, and held notes
@@ -66,7 +67,7 @@ with open(os.path.join(HERE, "build", "sweep.csv"), "w", newline="") as f:
     w.writeheader()
     w.writerows(rows)
 
-key = lambda r: tuple(r[k] for k in FIELDS[1:9])
+key = lambda r: tuple(r[k] for k in FIELDS[1:9]) + (r["transpose"],)
 original = {key(r): r for r in rows if r["voice"] == "0"}
 
 

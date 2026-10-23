@@ -12,6 +12,7 @@
 //             phone position (700 Hz, 1.5 kHz, 3 kHz) are left out.
 //   peak      highest output sample, 0..1 (1 = full scale)
 //   clipped   output samples at full scale
+//   transpose (last column) the octave shift used
 // wav=path also writes the output as a mono 16-bit WAV.
 //
 // test=1 instead runs the firmware's tone test (brains2/apps/duo/tone_test.h)
@@ -327,9 +328,9 @@ int main(int argc, char** argv) {
   if (p.probe) {
     fprintf(stderr, "audio blocks: most in use %d of 192\n", (int)AudioStream::memory_used_max);
   }
-  printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%.2f,%.2f,%.3f,%d\n", p.voice, p.filter, p.resonance,
+  printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%.2f,%.2f,%.3f,%d,%d\n", p.voice, p.filter, p.resonance,
          p.release, p.detune, p.pw, p.accent, p.gate_ms, p.step_ms, loudness(out, false),
-         loudness(out, true), peak / 32768.0, clipped);
+         loudness(out, true), peak / 32768.0, clipped, p.transpose);
   if (!p.wav.empty()) write_wav(p.wav, out);
   return 0;
 }
