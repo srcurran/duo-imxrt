@@ -234,8 +234,11 @@ static const LushFx::Params STRINGS_LUSH = {0.5f, 0.85f, 0.35f, 0.6f, 3.0f, 5.8f
 static const LushFx::Params PLUCK_LUSH = {0.9f, 0.2f, 0.4f, 0.4f, 1.5f, 0.6f, 1.5f, 0.85f};
 static const LushFx::Params FM_LUSH = {0.75f, 0.5f, 0.3f, 0.7f, 1.5f, 1.1f, 1.5f, 0.85f};
 
-// Organ: upper drawbar, as a multiple of the fundamental.
-static const float ORGAN_DRAWBARS[] = {3.0f, 4.0f, 6.0f, 8.0f};
+// Organ: the knob's upper drawbar, as a multiple of the fundamental (2', 1 3/5',
+// 1 1/3', 1'). A fixed quint (3x) always sounds too: the DUO's speaker can't
+// play the low fundamental, and with only 2x and an even drawbar the ear heard
+// the note an octave too high; 2x + 3x make it infer the right pitch.
+static const float ORGAN_DRAWBARS[] = {4.0f, 5.0f, 6.0f, 8.0f};
 // FM: modulator/carrier ratios. 1-4 are harmonic (electric piano, organ-ish,
 // hollow), 3.5 and 1.41 are bells and metal, 0.5 a growly bass.
 static const float FM_RATIOS[] = {1.0f, 2.0f, 3.0f, 4.0f, 0.5f, 3.5f, 1.41f, 7.0f};
@@ -281,8 +284,9 @@ static const float VOICE_TRIM_DB[VOICE_COUNT] = {
     -7.5f,  // Organ
     -5.0f,  // Strings
     -4.5f,  // Acid
-    -2.0f,  // Pluck    (-4 would stop all clipping; -2 leaves 3-8
-            //           clipped samples per 4 s on bright Accent strikes)
+    -4.0f,  // Pluck    (rings on whatever the note length, so it read loud
+            //           once very short notes joined the sweep; also clears
+            //           its last clipped samples)
     -7.0f,  // FM
     -5.5f,  // Fold
     -3.0f,  // Chord
@@ -324,7 +328,9 @@ void voice_apply() {
   switch (synth_voice) {
     case VOICE_ORCHID:
       envelope1.attack(40);   // soft bloom instead of a click
-      envelope2.attack(250);  // the filter opens slowly
+      // The filter opens gently. Was 250 ms: short sequenced notes (~30 ms)
+      // ended before it opened, and with the Filter knob low they went silent.
+      envelope2.attack(80);
       envelope2.release(600);
       lush_fx.set(LushFx::ORCHID_PARAMS);
       lush_fx.enable(true);
@@ -333,6 +339,7 @@ void voice_apply() {
       osc_pulse.begin(WAVEFORM_SINE);
       osc_saw.begin(WAVEFORM_SINE);
       osc3.begin(WAVEFORM_SINE);
+      osc4.begin(WAVEFORM_SINE);
       voice_gain(0, 0.4f);
       voice_gain(2, 0.4f);
       envelope1.attack(4);
@@ -345,8 +352,9 @@ void voice_apply() {
       osc4.begin(WAVEFORM_BANDLIMIT_SAWTOOTH);
       voice_gain(0, 0.4f);
       voice_gain(2, 0.4f);
-      envelope1.attack(150);
-      envelope2.attack(400);
+      // A gentle swell. Was 150 / 400 ms: short notes went silent (see Orchid).
+      envelope1.attack(60);
+      envelope2.attack(120);
       envelope2.release(800);
       lush_fx.set(STRINGS_LUSH);  // slow + fast sweep: a string ensemble
       lush_fx.enable(true);
@@ -470,6 +478,8 @@ static void voice_update_sources(const float note) {
       osc_pulse.amplitude(0.6f);
       osc3.frequency(note);  // 4' octave
       osc3.amplitude(0.35f);
+      osc4.frequency(f0 * 3.0f);  // 2 2/3' quint (sets the heard pitch)
+      osc4.amplitude(0.25f);
       osc_saw.frequency(f0 * ORGAN_DRAWBARS[knob_index(synth.detune, 4)]);
       osc_saw.amplitude(pw * 0.5f);
       break;

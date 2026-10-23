@@ -34,7 +34,8 @@ if "--quick" in sys.argv:
 else:
     GRID = dict(filter=[128, 512, 896], resonance=[0, 512, 1023], detune=[128, 512, 896],
                 pw=[128, 512, 896], release=[256, 768], accent=[0, 1],
-                style=[(125, 60), (1000, 800)])  # (step_ms, gate_ms): 16ths, held
+                style=[(125, 30), (125, 60), (1000, 800)])  # (step_ms, gate_ms):
+                # very short 16ths, 16ths, held notes
 
 
 def render(args):
