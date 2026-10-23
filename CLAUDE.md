@@ -48,7 +48,11 @@ Full plan doc: https://claude.ai/code/artifact/c8336b8f-97ed-4703-bb62-ebb3c1ede
   (`git remote set-url --push origin DISABLED-do-not-push-to-dato`).
 - Personal fork: https://github.com/srcurran/duo-imxrt (public; forks of public repos
   must be). Remote name `fork`. `main` (pushed to `fork/main`, 2026-10-22) holds all the
-  mods; `variable-length` and `play-led-breathe` are also pushed. CLAUDE.md and `restore/`
+  mods; `variable-length` and `play-led-breathe` are also pushed. 2026-10-23: main
+  (voices, emulator, drum pads, Funk) pushed, with `drum-pads`, the voice branches
+  (`claude/duo-voice-orchid-style-972622`, `claude/voice-mode-while-playing`,
+  `claude/voice-short-notes`, `claude/voice-gate-swell`, `claude/voice-normalize-octaves`)
+  and `claude/ko2-funky-bassline-voice-07075a`. CLAUDE.md and `restore/`
   are committed (so public on the fork). Local `main` is checked out in `~/dev/datoduo-main`.
 - Dato's open PRs reviewed 2026-10-22: none taken. #188 (littlefs persistent settings) is
   the base to revisit for pattern memory; it's untested on hardware and touches startup.
