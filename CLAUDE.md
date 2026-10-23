@@ -51,8 +51,9 @@ Full plan doc: https://claude.ai/code/artifact/c8336b8f-97ed-4703-bb62-ebb3c1ede
   mods; `variable-length` and `play-led-breathe` are also pushed. 2026-10-23: main
   (voices, emulator, drum pads, Funk) pushed, with `drum-pads`, the voice branches
   (`claude/duo-voice-orchid-style-972622`, `claude/voice-mode-while-playing`,
-  `claude/voice-short-notes`, `claude/voice-gate-swell`, `claude/voice-normalize-octaves`)
-  and `claude/ko2-funky-bassline-voice-07075a`. CLAUDE.md and `restore/`
+  `claude/voice-short-notes`, `claude/voice-gate-swell`, `claude/voice-normalize-octaves`,
+  `claude/voice-order-wrap`), `claude/sequence-64-steps` and
+  `claude/ko2-funky-bassline-voice-07075a`. CLAUDE.md and `restore/`
   are committed (so public on the fork). Local `main` is checked out in `~/dev/datoduo-main`.
 - Dato's open PRs reviewed 2026-10-22: none taken. #188 (littlefs persistent settings) is
   the base to revisit for pattern memory; it's untested on hardware and touches startup.
@@ -324,8 +325,9 @@ Top picks: scales, pattern memory, punch-in effects.
 - Always flash builds from `main` (owner's decision 2026-10-22): it has Mod 1 (paging,
   rests), the rescue combo and the breathing LEDs (25% floor, cursor step in time with
   Play), perform mode, Mod 2 (drum pads) and the voices (Accent + keys / Up/Down).
-  Flashed 2026-10-23: main 143c8f4 (adds Funk, voice 10 on key 10,
-  `restore/duo_main_143c8f4.bin`; label verified). Before it: a6392f7 (no silent spots
+  Flashed 2026-10-23: main 9858d80 (voices ordered by family, Up/Down wraps round,
+  64-step sequences; `restore/duo_main_9858d80.bin`; label verified; DTCM 26.4 of
+  32 KB). Before it: 143c8f4 (adds Funk). Before it: a6392f7 (no silent spots
   across octaves/filter, softer Organ). Before it: cd72c4e (swells
   follow the gate knob,
   `restore/duo_main_cd72c4e.bin`; label verified over USB with
