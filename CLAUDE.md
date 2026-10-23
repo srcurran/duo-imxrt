@@ -94,7 +94,7 @@ Full plan doc: https://claude.ai/code/artifact/c8336b8f-97ed-4703-bb62-ebb3c1ede
   choice in the bf912e4 merge; it used to be half a cycle opposite): note colour if
   enabled, white if empty.
 
-## Perform mode (built, branch `claude/sequence-perform-mode-f19b2e`, not yet flashed)
+## Perform mode (branch `claude/sequence-perform-mode-f19b2e`, flashed 2026-10-23)
 - Owner's design, 2026-10-23: hold **Random** while stopped and press **Play** => the
   sequence runs in perform mode. Keys (and the arp) play over it but record nothing.
   Stop, then Play again => normal recording mode.
@@ -105,6 +105,8 @@ Full plan doc: https://claude.ai/code/artifact/c8336b8f-97ed-4703-bb62-ebb3c1ede
 - Code: `Sequencer::performing` (`set_performing()`, cleared by `stop()`, also on MIDI
   stop); `record_note()` returns early when set. Combo in `main.cpp` (SEQ_START while
   `in_page_mode()`). Five unit tests (`perform_mode_*`, `stop_ends_perform_mode`).
+- Flashed 2026-10-23 (bd19148, .bin sha256 1aee3389...), replacing main bf912e4. Not yet
+  checked hands-on or merged into `main`. To go back: reflash `restore/duo_main_bf912e4.bin`.
 
 ## Mod 2: drum pads (planned)
 Code: `brains2/apps/duo/duo-firmware/src/DrumSynth.h`, `brains2/apps/duo/boards/*/drums.h`.
