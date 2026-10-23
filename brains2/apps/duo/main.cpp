@@ -68,6 +68,24 @@ static const int led_order[NUM_LEDS] = {1,  2,  3,  4,  5,  6,  7,  8,  9,  10,
 #define SK6812 1
 #include "duo-firmware/src/Leds.h"
 #include "shared/duo/Pitch.h"
+#ifdef TONE_TEST
+#include "tone_test.h"
+
+// Tone test LEDs: Play orange, step LEDs fill up as a progress bar, and in
+// the voice section the current voice's keyboard key lights up.
+static void tone_test_leds() {
+  led_play = CRGB(255, 80, 0);
+  const int lit = (ToneTest::current_step() + 1) * 8 / ToneTest::NUM_STEPS;
+  for (int l = 0; l < 8; l++) {
+    leds(l) = l < lit ? CRGB(255, 80, 0) : CRGB::Black;
+  }
+  const ToneTest::Step& s = ToneTest::STEPS[ToneTest::current_step()];
+  for (int k = 0; k < 10; k++) {
+    physical_leds[k + 9] =
+        (s.kind == ToneTest::VOICE && k == s.voice) ? COLORS[SCALE[k] % 24] : CRGB::Black;
+  }
+}
+#endif
 
 #include "duo-firmware/src/DrumSynth.h"
 #include "drums.h"
@@ -246,6 +264,18 @@ static void process_key(const char k, const char state) {
           page_mode_held = true;
         }
       } else if (k == SEQ_START) {
+#ifdef TONE_TEST
+        // Tone test build: Play starts (or stops) the test.
+        if (sequencer.is_running()) {
+          sequencer_stop();
+        }
+        if (ToneTest::is_running()) {
+          ToneTest::stop();
+        } else {
+          ToneTest::start();
+        }
+        break;
+#endif
         if (in_page_mode()) {
           // Random + Play from stopped: start in perform mode. Keys play
           // over the sequence without recording. Stop ends perform mode.
@@ -380,9 +410,25 @@ static void main_loop(){
       if (millis() - frame_time > frame_interval) {
         frame_time = millis();
         led_update();
+#ifdef TONE_TEST
+        if (ToneTest::is_running()) {
+          tone_test_leds();
+        }
+#endif
         midi_send_cc();
         FastLED.show();
       } else {
+#ifdef TONE_TEST
+        if (ToneTest::is_running()) {
+          // The test drives the synth itself; knobs, sequencer and drums rest.
+          DatoUSB::background_update();
+          MIDI::read(MIDI_CHANNEL);
+          ToneTest::update();
+          headphone_jack_check();
+          keys_scan();
+          continue;
+        }
+#endif
         DatoUSB::background_update();
         MIDI::read(MIDI_CHANNEL);
         pitch_update(); // ~30us

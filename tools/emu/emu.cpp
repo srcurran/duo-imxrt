@@ -11,6 +11,10 @@
 //   clipped   output samples at full scale
 // wav=path also writes the output as a mono 16-bit WAV.
 //
+// test=1 instead runs the firmware's tone test (brains2/apps/duo/tone_test.h)
+// exactly as a DUO_TONE_TEST=1 build does after pressing Play, writes it to
+// wav=, and prints its timetable: step,start_ms,ms,kind,hz,voice.
+//
 // The output is what reaches the DAC on the speaker path: mixer_output ->
 // pop_suppressor -> speaker preamp (x2), as in main.cpp. The volume knob is
 // at maximum, delay and drums are off unless asked for.
@@ -48,6 +52,7 @@ float midi_note_to_frequency(int x) {
 #include "brains2/apps/duo/globals.h"
 #include "brains2/apps/duo/duo-firmware/src/Synth.h"
 #include "shared/duo/Pitch.h"
+#include "brains2/apps/duo/tone_test.h"
 
 // main.cpp's note_on()/note_off(), minus MIDI and LEDs.
 static uint8_t note_is_playing = 0;
@@ -102,6 +107,7 @@ struct Params {
   int transpose = 0;
   std::string notes = "49,54,58,63,68,70,63,54";  // keyboard keys 1,3,5,6,9,10,6,3
   std::string wav;
+  int test = 0;
 };
 
 static void write_wav(const std::string& path, const std::vector<int16_t>& s) {
@@ -183,6 +189,7 @@ int main(int argc, char** argv) {
     else if (k == "transpose") p.transpose = n;
     else if (k == "notes") p.notes = v;
     else if (k == "wav") p.wav = v;
+    else if (k == "test") p.test = n;
     else { fprintf(stderr, "unknown key: %s\n", k.c_str()); return 1; }
   }
   std::vector<int> notes;
@@ -214,12 +221,39 @@ int main(int argc, char** argv) {
   }
   transpose = p.transpose;
 
+  const double block_ms = 1000.0 * AUDIO_BLOCK_SAMPLES / AUDIO_SAMPLE_RATE_EXACT;
+  if (p.test) {
+    // As the main loop does while the test runs: ToneTest::update(), then
+    // the audio update loop. 1 s of silence first, as if Play came later.
+    uint32_t total = 1000;
+    printf("step,start_ms,ms,kind,hz,voice\n");
+    for (int i = 0; i < ToneTest::NUM_STEPS; i++) {
+      const ToneTest::Step& s = ToneTest::STEPS[i];
+      printf("%d,%u,%u,%s,%u,%u\n", i, total, s.ms,
+             s.kind == ToneTest::TONE ? "tone" : (s.kind == ToneTest::VOICE ? "voice" : "silence"),
+             s.hz, s.voice + 1);
+      total += s.ms;
+    }
+    total += 2000;
+    bool started = false;
+    for (int b = 0; b * block_ms < total; b++) {
+      emu_millis = (uint32_t)(b * block_ms);
+      if (!started && emu_millis >= 1000) {
+        ToneTest::start();
+        started = true;
+      }
+      ToneTest::update();
+      software_isr();
+    }
+    if (!p.wav.empty()) write_wav(p.wav, sink.samples);
+    return 0;
+  }
+
   synth_voice = p.voice;
   if (p.voice != VOICE_ORIGINAL) voice_apply();
 
   // Run block by block: the main loop's pitch_update() and synth_update(),
   // then one pass of the audio update loop (software_isr).
-  const double block_ms = 1000.0 * AUDIO_BLOCK_SAMPLES / AUDIO_SAMPLE_RATE_EXACT;
   const int blocks = (int)(p.seconds * 1000 / block_ms);
   int step = -1;
   bool gate = false;

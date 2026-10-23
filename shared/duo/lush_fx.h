@@ -190,6 +190,7 @@ class Lush {
     chorus.reset();
     reverb.reset();
     rev_prev = 0.0f;
+    dc_x1 = dc_y1 = 0.0f;
   }
 
   void set(const Params& p) {
@@ -214,7 +215,13 @@ class Lush {
 
  private:
   float chorused(const int16_t in) {
-    const float dry = in;
+    // DC blocker (~10 Hz high-pass). The pulse oscillator has a small DC
+    // offset, which the reverb's feedback would multiply ~5x: inaudible, but
+    // it ate 15% of the headroom in the Orchid voice.
+    const float x = in;
+    const float dry = x - dc_x1 + 0.9986f * dc_y1;
+    dc_x1 = x;
+    dc_y1 = dry;
     return dry * params.dry + chorus.process(dry) * params.chorus;
   }
 
@@ -222,6 +229,8 @@ class Lush {
   Chorus chorus;
   Reverb reverb;
   float rev_prev;
+  float dc_x1;
+  float dc_y1;
 };
 
 }  // namespace LushFx

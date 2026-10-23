@@ -180,6 +180,26 @@ Full plan doc: https://claude.ai/code/artifact/c8336b8f-97ed-4703-bb62-ebb3c1ede
 - Note on/off synth code moved from main.cpp into Synth.h (`synth_note_pitch`,
   `synth_note_start`, `synth_note_stop`) so the emulator shares it; main.cpp still
   sends MIDI in the same place.
+- Tone test (2026-10-23): `brains2/apps/duo/tone_test.h`, in builds made with
+  `DUO_TONE_TEST=1` in the environment (`DUO_TONE_TEST=1 ../scripts/build.sh duo
+  -DBOARD=DUO_BRAINS_2.3`); an env var so it can't stick in the CMake cache. Press Play:
+  start signal (two 1 kHz beeps), 14 equal-level sine tones 100 Hz-8 kHz (4 s + 2 s
+  gap), 8 s gap, voices 1-9 with knobs at noon (6 s + 2 s gap), end beep; ~2:55. Play
+  LED orange, step LEDs = progress, voice key lit. Knobs, sequencer, drums ignored;
+  USB/MIDI keep running. Image: `restore/duo_tone-test.bin`. `emu test=1 wav=...`
+  runs the identical test and prints the timetable. Analysis:
+  `tools/emu/read_meter.py recording.mp4 > meter.csv` (macOS text recognition on the
+  NIOSH SLM screen), then `uv run --with numpy --with scipy python
+  tools/emu/tone_test_analysis.py steps.csv test.wav meter.csv` -> speaker+mic
+  response per frequency and each voice measured vs emulated. Checked end to end with
+  a fake recording (recovered a 300 Hz roll-off within ~0.5 dB).
+- Found with the emulator: (1) the state-variable filter goes unstable above ~8.4 kHz
+  at minimum resonance (the test's tone path uses 7 kHz); (2) the reverb multiplied the
+  pulse wave's DC offset to 15% of full scale in Orchid; LushFx now has a ~10 Hz DC
+  blocker (unit-tested), Orchid's peak dropped 0.45 -> 0.30.
+- **2026-10-23: the DUO is running the tone-test build** (flashed for the owner's
+  speaker reading; the updater hung on its final reset but the DUO restarted). Flash
+  the normal build back afterwards.
 - Limits: no speaker or room model. Fitting a speaker bass cut-off to the owner's
   dB-meter test didn't help (knob positions in that test unknown; its Original segment
   read ~8 dB high), so levels match the electrical output; ears have the final say.

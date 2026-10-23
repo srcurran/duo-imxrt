@@ -1,3 +1,5 @@
+#include <cmath>  // before unity.h, whose isnan/isinf macros break it
+
 #include "lush_fx.h"
 #include "unity.h"
 
@@ -71,15 +73,22 @@ void reverb_tail_decays_to_silence() {
 // Full-scale input clips at the int16 limits instead of wrapping round
 // (a wrap would flip the sign: a loud crack).
 void full_scale_input_never_wraps() {
+  // Full-scale 100 Hz sine. A wrap would jump ~65000 between two samples;
+  // the real signal moves at most a few thousand.
   int16_t block[BLOCK];
+  int prev = 0, max_jump = 0, n = 0;
   for (int b = 0; b < 2 * SAMPLE_RATE / BLOCK; b++) {
-    for (int i = 0; i < BLOCK; i++) block[i] = 32767;
+    for (int i = 0; i < BLOCK; i++, n++) {
+      block[i] = static_cast<int16_t>(32767 * sin(2 * 3.14159265 * 100 * n / SAMPLE_RATE));
+    }
     fx.process(block, BLOCK);
-    if (b > 10) {
-      // A constant positive input must give a positive output.
-      for (int i = 0; i < BLOCK; i++) TEST_ASSERT_GREATER_THAN(0, block[i]);
+    for (int i = 0; i < BLOCK; i++) {
+      const int jump = std::abs(block[i] - prev);
+      if (jump > max_jump) max_jump = jump;
+      prev = block[i];
     }
   }
+  TEST_ASSERT_LESS_THAN(20000, max_jump);
 }
 
 // reset() clears the delay lines: no old tail after re-enabling.
@@ -95,6 +104,18 @@ void reset_clears_the_tail() {
   }
 }
 
+// A constant offset (DC) is removed, not built up by the reverb.
+void dc_offset_is_removed() {
+  int16_t block[BLOCK];
+  int last_peak = 0;
+  for (int b = 0; b < 2 * SAMPLE_RATE / BLOCK; b++) {
+    for (int i = 0; i < BLOCK; i++) block[i] = -3000;
+    fx.process(block, BLOCK);
+    last_peak = peak(block, BLOCK);
+  }
+  TEST_ASSERT_LESS_THAN(30, last_peak);
+}
+
 }  // namespace Tests
 
 int main(void) {
@@ -104,5 +125,6 @@ int main(void) {
   RUN_TEST(Tests::reverb_tail_decays_to_silence);
   RUN_TEST(Tests::full_scale_input_never_wraps);
   RUN_TEST(Tests::reset_clears_the_tail);
+  RUN_TEST(Tests::dc_offset_is_removed);
   return UNITY_END();
 }
