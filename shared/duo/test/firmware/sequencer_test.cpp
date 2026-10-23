@@ -495,6 +495,79 @@ void toggling_cursor_step_off_enters_a_rest() {
   ASSERT_EQ(0, seq.cur_step_index());
 }
 
+
+void perform_mode_plays_early_note_without_recording() {
+  auto seq = make_cleared_sequencer();
+  seq.set_gate_length(5);
+  seq.run();
+  seq.set_performing(true);
+
+  seq.tick_clock();
+  seq.hold_note(1);
+  ASSERT_NOTE_PLAYING(true);
+  ASSERT_PLAYED_COUNT(1);
+  seq.release_note(1);
+
+  ASSERT_EQ(0, count_enabled_steps(seq));
+}
+
+void perform_mode_plays_late_note_without_recording() {
+  auto seq = make_cleared_sequencer();
+  seq.set_gate_length(5);
+  seq.run();
+  seq.set_performing(true);
+
+  for (unsigned i = 0; i < Sequencer::TICKS_PER_STEP - 1; ++i) {
+    seq.tick_clock();
+  }
+  seq.hold_note(1);
+  tick_to_next_step(seq);
+  // The held note sounds on the next step, but isn't stored.
+  ASSERT_NOTE_PLAYING(true);
+  ASSERT_PLAYED_COUNT(1);
+  seq.release_all_notes();
+
+  ASSERT_EQ(0, count_enabled_steps(seq));
+}
+
+void perform_mode_keeps_existing_steps() {
+  auto seq = make_cleared_sequencer();
+  seq.set_gate_length(5);
+  seq.toggle_step(1);
+  seq.set_step_note(1, 7);
+  seq.run();
+  seq.set_performing(true);
+
+  seq.tick_clock();
+  ASSERT_EQ(1, seq.cur_step_index());
+  seq.hold_note(3);
+  seq.release_note(3);
+
+  ASSERT_ONLY_ENABLED_STEP(seq, 1);
+  ASSERT_EQ(7, get_note(seq, 1));
+}
+
+void perform_mode_still_toggles_steps() {
+  auto seq = make_cleared_sequencer();
+  seq.run();
+  seq.set_performing(true);
+  seq.toggle_step(4);
+  ASSERT_ONLY_ENABLED_STEP(seq, 4);
+}
+
+void stop_ends_perform_mode() {
+  auto seq = make_cleared_sequencer();
+  seq.run();
+  seq.set_performing(true);
+  seq.stop();
+  ASSERT_FALSE(seq.is_performing());
+
+  // Stopped step entry records again.
+  seq.hold_note(1);
+  seq.release_note(1);
+  ASSERT_EQ(1, count_enabled_steps(seq));
+}
+
 } // namespace Tests
 
 void setUp(void) { NoteTracker::reset(); }
@@ -529,6 +602,11 @@ int main() {
   RUN_TEST(Tests::set_cursor_moves_to_step_without_playing);
   RUN_TEST(Tests::plays_from_cursor_after_set_page);
   RUN_TEST(Tests::toggling_cursor_step_off_enters_a_rest);
+  RUN_TEST(Tests::perform_mode_plays_early_note_without_recording);
+  RUN_TEST(Tests::perform_mode_plays_late_note_without_recording);
+  RUN_TEST(Tests::perform_mode_keeps_existing_steps);
+  RUN_TEST(Tests::perform_mode_still_toggles_steps);
+  RUN_TEST(Tests::stop_ends_perform_mode);
 #endif
   return UNITY_END();
 }

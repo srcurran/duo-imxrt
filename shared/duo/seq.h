@@ -125,8 +125,18 @@ struct Sequencer {
   // `run()` and `stop()` controls the running state of the Sequencer, however
   // is no internal ticker. In order to advance, `tick_clock()` must be called.
   void run();
+  // Stopping also ends perform mode.
   void stop() {
     running = false;
+    performing = false;
+  }
+  // Perform mode: live notes (keys and arp) still sound, but nothing is
+  // recorded into the steps. Step toggles still work. Cleared by stop().
+  inline void set_performing(const bool on) {
+    performing = on;
+  }
+  inline bool is_performing() const {
+    return performing;
   }
 
   void advance();
@@ -236,6 +246,7 @@ private:
   }
 
   bool running = false;
+  bool performing = false;
   bool step_played_live = false;
   uint8_t length = NUM_STEPS;
   uint8_t current_step = 0;
