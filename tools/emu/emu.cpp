@@ -3,7 +3,7 @@
 // note pattern with given knob settings, and reports loudness.
 //
 // Usage: emu key=value ...   (see Params below for keys and defaults;
-//        key=1..9 picks the voice by keyboard key, voice=0..8 by number)
+//        key=1..10 picks the voice by keyboard key, voice=0..9 by number)
 // Prints one CSV line: the settings, then
 //   lufs      integrated loudness (ITU-R BS.1770 K-weighting, no gating)
 //   lufs_spk  the same through a model of the DUO's speaker, measured with the
@@ -191,7 +191,7 @@ int main(int argc, char** argv) {
     const std::string k = a.substr(0, eq), v = a.substr(eq + 1);
     const int n = atoi(v.c_str());
     if (k == "voice") p.voice = n;
-    else if (k == "key") p.voice = n - 1;  // keyboard key 1-9
+    else if (k == "key") p.voice = n - 1;  // keyboard key 1-10
     else if (k == "filter") p.filter = n;
     else if (k == "resonance") p.resonance = n;
     else if (k == "release") p.release = n;

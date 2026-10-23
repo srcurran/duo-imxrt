@@ -32,7 +32,7 @@ bool page_mode_held = false;
 // Keyboard keys (bit per key) pressed as part of a length combo. Their release
 // is swallowed too, so they never play or release a note.
 uint16_t combo_keys_held = 0;
-// Voices: hold Accent (voice mode) and press key 1-9 (stopped) or Up/Down.
+// Voices: hold Accent (voice mode) and press key 1-10 (stopped) or Up/Down.
 // Original is the stock DUO sound and the default at power-on. Each voice is
 // described in Synth.h (voice_apply).
 enum Voice : uint8_t {
@@ -45,10 +45,11 @@ enum Voice : uint8_t {
   VOICE_FM,
   VOICE_FOLD,
   VOICE_CHORD,
-  VOICE_COUNT  // 9: keys 1-9; key 10 still plays in voice mode
+  VOICE_FUNK,
+  VOICE_COUNT  // 10: one per keyboard key
 };
 uint8_t synth_voice = VOICE_ORIGINAL;
-// Voice mode: Accent held. Stopped: keys 1-9 pick a voice. Stopped or
+// Voice mode: Accent held. Stopped: keys 1-10 pick a voice. Stopped or
 // playing: Up/Down step to the next/previous voice (instead of transposing).
 // While playing the keys play as normal (accented).
 bool voice_mode_held = false;
