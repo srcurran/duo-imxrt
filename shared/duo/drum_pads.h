@@ -12,7 +12,9 @@
 //   same for SETTLE_MS before it plays. This avoids playing two drums.
 // - A contact counts as lifted only after it has read "off" for RELEASE_MS,
 //   so a flickering contact doesn't retrigger.
-// - Sliding into a different zone plays that zone's drum.
+// - Sliding into a different zone plays that zone's drum. Once the middle
+//   has played, the finger must leave the middle contact to reach an edge
+//   (a finger on the middle often brushes a neighbour).
 // - Holding the pad repeats the last drum on every sequencer step, once the
 //   pad has been held for REPEAT_HOLD_MS. A quick tap stays a single hit.
 
@@ -70,7 +72,12 @@ struct Pad {
       hold_start_ms = now_ms;
     }
 
-    const Zone zone = zone_of(on[0], on[1], on[2]);
+    Zone zone = zone_of(on[0], on[1], on[2]);
+    if (played == Middle && on[Middle]) {
+      // Resting on the middle: brushing a neighbouring contact doesn't count
+      // as a slide. Only leaving the middle contact moves to an edge.
+      zone = Middle;
+    }
     if (zone != candidate) {
       candidate = zone;
       candidate_since_ms = now_ms;

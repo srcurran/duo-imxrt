@@ -92,9 +92,10 @@ void sliding_plays_each_new_zone() {
   ASSERT_ZONE(NoZone, hold(pad, true, true, false, 21, 40));
   // Off the left (after the release time): Middle.
   ASSERT_ZONE(Middle, hold(pad, false, true, false, 41, 100));
-  // Onto the right: Right as soon as it touches.
-  ASSERT_ZONE(Right, hold(pad, false, true, true, 101, 120));
-  ASSERT_ZONE(NoZone, hold(pad, false, false, true, 121, 160));
+  // Onto the right while still on the middle: still Middle.
+  ASSERT_ZONE(NoZone, hold(pad, false, true, true, 101, 120));
+  // Off the middle: Right.
+  ASSERT_ZONE(Right, hold(pad, false, false, true, 121, 170));
   TEST_ASSERT_EQUAL_INT(Right, pad.last_zone);
 }
 
@@ -125,9 +126,9 @@ void repeat_follows_slide() {
   ASSERT_ZONE(Left, hold(pad, true, false, false, 0, 199));
   ASSERT_ZONE(Left, pad.update(true, false, false, 200, true));
   // Slide across the middle to the right.
-  ASSERT_ZONE(Middle, hold(pad, false, true, false, 201, 260));
-  ASSERT_ZONE(Right, hold(pad, false, true, true, 261, 299));
-  ASSERT_ZONE(Right, pad.update(false, true, true, 300, true));
+  ASSERT_ZONE(Middle, hold(pad, false, true, false, 201, 250));
+  ASSERT_ZONE(Right, hold(pad, false, false, true, 251, 319));
+  ASSERT_ZONE(Right, pad.update(false, false, true, 320, true));
 }
 
 void repeat_keeps_gap_after_slide() {
@@ -150,6 +151,25 @@ void hold_time_restarts_after_lift() {
   ASSERT_ZONE(Left, pad.update(true, false, false, 500, true));
 }
 
+void middle_ignores_brushing_a_neighbour() {
+  Pad pad;
+  ASSERT_ZONE(Middle, hold(pad, false, true, false, 0, 30));
+  // Finger rolls a little and touches the left, then the right contact.
+  ASSERT_ZONE(NoZone, hold(pad, true, true, false, 31, 60));
+  ASSERT_ZONE(NoZone, hold(pad, false, true, false, 61, 100));
+  ASSERT_ZONE(NoZone, hold(pad, false, true, true, 101, 140));
+  // Middle flickers off for a moment while on the right: still Middle.
+  ASSERT_ZONE(NoZone, hold(pad, false, false, true, 141, 150));
+  ASSERT_ZONE(NoZone, hold(pad, false, true, true, 151, 200));
+}
+
+void landing_on_middle_then_neighbour_plays_once() {
+  // Middle settles first, the left contact touches later: one hit only.
+  Pad pad;
+  ASSERT_ZONE(Middle, hold(pad, false, true, false, 0, 9));
+  ASSERT_ZONE(NoZone, hold(pad, true, true, false, 10, 100));
+}
+
 } // namespace Tests
 
 void setUp(void) {}
@@ -170,5 +190,7 @@ int main() {
   RUN_TEST(Tests::repeat_follows_slide);
   RUN_TEST(Tests::repeat_keeps_gap_after_slide);
   RUN_TEST(Tests::hold_time_restarts_after_lift);
+  RUN_TEST(Tests::middle_ignores_brushing_a_neighbour);
+  RUN_TEST(Tests::landing_on_middle_then_neighbour_plays_once);
   return UNITY_END();
 }
