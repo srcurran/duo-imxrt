@@ -129,14 +129,12 @@ static void pots_read() {
 
   synth.glide = pinRead(GLIDE_PIN);
   synth.crush = pinRead(BITC_PIN);
-  // Accent pressed while stopped => voice mode, until it's let go. The pad
-  // has to read released for 30 ms first, so a flicker doesn't end it.
+  // Accent held => voice mode (stopped or playing), until it's let go. The
+  // pad has to read released for 30 ms first, so a flicker doesn't end it.
   static unsigned long accent_seen_time = 0;
   const bool accent = pinRead(ACCENT_PIN);
   if (accent) {
-    if (!voice_mode_held && !synth.accent) {
-      voice_mode_held = !sequencer.is_running();
-    }
+    voice_mode_held = true;
     accent_seen_time = millis();
   } else if (millis() - accent_seen_time > 30) {
     voice_mode_held = false;

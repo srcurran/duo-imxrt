@@ -138,6 +138,10 @@ Full plan doc: https://claude.ai/code/artifact/c8336b8f-97ed-4703-bb62-ebb3c1ede
 - Unit tests: `lush_fx_test`, `voice_fx_test` (pluck tuning/decay/ring length, fold,
   organ vibrato).
 - Mix levels and voice settings are first guesses, to tune by ear on the DUO.
+- Variant on branch `claude/voice-mode-while-playing` (owner's request 2026-10-23, to
+  try): Accent opens voice mode while playing too. While playing, Accent + keys 1-9
+  switch voice instead of playing an accented live note (key 10 still plays); the
+  sequence's accent boost still applies while Accent is held. Built, not flashed.
 - Flashed 2026-10-23: 540b6bb (Original + Orchid only, `restore/duo_voices_540b6bb.bin`),
   then 999d0ce (all nine voices, `restore/duo_voices_999d0ce.bin`, sha256 9c0d012c...).
   Not yet checked hands-on. Each flash replaced a drum-pads build from another

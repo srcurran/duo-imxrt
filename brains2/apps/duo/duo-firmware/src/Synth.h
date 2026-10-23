@@ -212,7 +212,7 @@ inline void audio_volume(int volume) {
 }
 
 // ---- Voices ----------------------------------------------------------------
-// Hold Accent while stopped and press keyboard key 1-9 (see globals.h).
+// Hold Accent (stopped or playing) and press keyboard key 1-9 (globals.h).
 // Every voice runs through the same filter, envelopes, bitcrusher and delay,
 // so those knobs and buttons work the same everywhere. Detune and Pulse Width
 // are each voice's two "character" knobs:
