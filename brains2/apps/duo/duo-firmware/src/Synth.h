@@ -297,8 +297,39 @@ static float fold_trim = 1.0f;
 
 static void voice_gain(const int channel, const float gain) { voice_mix[channel] = gain; }
 
+// Swells (slow amp / filter attacks) for Orchid, Strings and Chord, in ms.
+// synth_update() caps them by the gate knob: the amp attack at half the note
+// length, the filter attack at the note length. Without the cap, short
+// sequenced notes (the gate knob goes down to 10 ms) ended before the swell
+// got going, and these voices went near-silent. Long gates keep the full
+// swell; short gates give a plucky version of the voice.
+static int swell_amp_ms = 0, swell_filter_ms = 0;  // 0: no swell (fixed attacks)
+static int swell_amp_set = -1, swell_filter_set = -1;
+static void voice_swell(const int amp_ms, const int filter_ms) {
+  swell_amp_ms = amp_ms;
+  swell_filter_ms = filter_ms;
+}
+
+// Applies the swell for the current gate knob. Audio interrupts off.
+static void swell_update() {
+  if (!swell_amp_ms) return;
+  const int gate_ms = map(synth.gateLength, 0, 1023, 10, 200);  // as Sequencer.h
+  const int amp = swell_amp_ms < gate_ms / 2 ? swell_amp_ms : gate_ms / 2;
+  const int filter = swell_filter_ms < gate_ms ? swell_filter_ms : gate_ms;
+  if (amp != swell_amp_set) {
+    envelope1.attack(amp);
+    swell_amp_set = amp;
+  }
+  if (filter != swell_filter_set) {
+    envelope2.attack(filter);
+    swell_filter_set = filter;
+  }
+}
+
 // Puts everything back to the Original voice: exactly what audio_init() set.
 static void voice_reset() {
+  swell_amp_ms = swell_filter_ms = 0;
+  swell_amp_set = swell_filter_set = -1;
   osc_saw.begin(WAVEFORM_BANDLIMIT_SAWTOOTH);
   osc_pulse.begin(WAVEFORM_BANDLIMIT_PULSE);
   osc_pulse.amplitude(0.5f);
@@ -327,10 +358,7 @@ void voice_apply() {
   voice_reset();
   switch (synth_voice) {
     case VOICE_ORCHID:
-      envelope1.attack(40);   // soft bloom instead of a click
-      // The filter opens gently. Was 250 ms: short sequenced notes (~30 ms)
-      // ended before it opened, and with the Filter knob low they went silent.
-      envelope2.attack(80);
+      voice_swell(40, 250);  // soft bloom; the filter opens slowly
       envelope2.release(600);
       lush_fx.set(LushFx::ORCHID_PARAMS);
       lush_fx.enable(true);
@@ -352,9 +380,7 @@ void voice_apply() {
       osc4.begin(WAVEFORM_BANDLIMIT_SAWTOOTH);
       voice_gain(0, 0.4f);
       voice_gain(2, 0.4f);
-      // A gentle swell. Was 150 / 400 ms: short notes went silent (see Orchid).
-      envelope1.attack(60);
-      envelope2.attack(120);
+      voice_swell(150, 400);
       envelope2.release(800);
       lush_fx.set(STRINGS_LUSH);  // slow + fast sweep: a string ensemble
       lush_fx.enable(true);
@@ -399,8 +425,7 @@ void voice_apply() {
       osc4.begin(WAVEFORM_BANDLIMIT_SAWTOOTH);
       voice_gain(0, 0.4f);
       voice_gain(2, 0.4f);
-      envelope1.attack(20);
-      envelope2.attack(120);
+      voice_swell(20, 120);
       envelope2.release(600);
       lush_fx.set(LushFx::ORCHID_PARAMS);
       lush_fx.enable(true);
@@ -606,6 +631,7 @@ void synth_update() {
   filter1.resonance(filter_resonance);
 
   envelope1.release(release_ms);
+  swell_update();
 
   bitcrusher1.sampleRate(bitcrusher_samplerate);
 

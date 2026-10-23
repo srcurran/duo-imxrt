@@ -242,6 +242,9 @@ int main(int argc, char** argv) {
   synth.glide = p.glide;
   synth.crush = p.crush;
   synth.delay = p.delay;
+  // The gate knob, matching the note length (Sequencer.h maps 0-1023 to
+  // 10-200 ms); held notes longer than that read as the knob at maximum.
+  synth.gateLength = p.gate_ms <= 10 ? 0 : (p.gate_ms >= 200 ? 1023 : (p.gate_ms - 10) * 1023 / 190);
   if (p.delay) {  // keys_scan() turning the delay on
     delay_fader.fadeIn(10);
     delay_envelope.noteOn();

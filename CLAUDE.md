@@ -201,6 +201,16 @@ Code: touch logic in `shared/duo/drum_pads.h` (pure C++, unit tested in
   (3) Pluck trim -2 -> -4 dB (it rings regardless of note length; read +2.3 dB with
   short notes in the sweep; owner's DUO reading had it +4.7). No clipping left.
 
+- Swells tied to the gate knob (2026-10-23, branch `claude/voice-gate-swell`, after
+  the owner found Strings still dropping out on 5541b04): the gate knob goes down to
+  10 ms notes (Sequencer.h maps it to 10-200 ms), and at 10 ms Strings/Orchid/Chord fell
+  20-50 dB. `voice_swell(amp_ms, filter_ms)` sets each swelling voice's designed
+  attacks (Orchid 40/250, Strings 150/400, Chord 20/120, the originals again);
+  `swell_update()` in synth_update caps them at half the gate (amp) and the gate
+  (filter). Short gates = plucky versions; held live keys get the cap too. All voices
+  now within ~1-3.5 dB of Original at 10-60 ms notes; the sweep includes 10 ms notes
+  (11664 renders); emu sets synth.gateLength from gate_ms.
+
 ## Mac emulator (tools/emu, 2026-10-23)
 - Runs the real firmware audio code on the Mac: Teensy audio objects, AudioStream.cpp,
   Synth.h, Pitch.h, globals.h, seq.cpp. `tools/emu/shim/host_platform.h` replaces the
