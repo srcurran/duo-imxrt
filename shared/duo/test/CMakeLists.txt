@@ -44,3 +44,13 @@ target_link_libraries(lush_fx_test PRIVATE unity_framework)
 add_test(
   NAME lush_fx_test
   COMMAND $<TARGET_FILE:lush_fx_test>)
+
+add_executable(voice_fx_test
+  ${CMAKE_CURRENT_LIST_DIR}/firmware/voice_fx_test.cpp
+)
+target_include_directories(voice_fx_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../)
+target_link_libraries(voice_fx_test PRIVATE unity_framework)
+
+add_test(
+  NAME voice_fx_test
+  COMMAND $<TARGET_FILE:voice_fx_test>)

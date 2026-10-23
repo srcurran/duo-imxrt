@@ -18,6 +18,10 @@ class AudioEffectLush : public AudioStream {
     enabled = on;
   }
 
+  // Mix and modulation settings (a voice's flavour). Call with audio
+  // interrupts off.
+  void set(const LushFx::Params& params) { fx.set(params); }
+
   virtual void update(void) {
     if (!enabled) {
       audio_block_t* block = receiveReadOnly();

@@ -89,14 +89,17 @@ void note_on(uint8_t midi_note, uint8_t velocity, bool enabled) {
     dc1.amplitude(velocity / 127.); // DC amplitude controls filter env amount.
     osc_pulse_midi_note = midi_note;
     osc_pulse_target_frequency = (int)midi_note_to_frequency(midi_note);
-    // Detune OSC2
-    osc_saw.frequency(detune(osc_pulse_midi_note, detune_amount));
+    // Detune OSC2 (the other voices set their oscillators in synth_update)
+    if (synth_voice == VOICE_ORIGINAL || synth_voice == VOICE_ORCHID) {
+      osc_saw.frequency(detune(osc_pulse_midi_note, detune_amount));
+    }
 
     AudioInterrupts();
 
     MIDI::sendNoteOn(midi_note, velocity, MIDI_CHANNEL);
     envelope1.noteOn();
     envelope2.noteOn();
+    voice_note_on(velocity);
   } else {
     leds(sequencer.cur_page_position()) = LED_WHITE;
   }
@@ -107,6 +110,7 @@ void note_off() {
     MIDI::sendNoteOff(note_is_playing, 0, MIDI_CHANNEL);
     envelope1.noteOff();
     envelope2.noteOff();
+    voice_note_off();
     note_is_playing = 0;
   }
 }
@@ -184,7 +188,7 @@ static void process_key(const char k, const char state) {
           combo_keys_held |= (1 << key);
           sequencer.set_length((key + 1) * Sequencer::STEPS_PER_PAGE);
         } else if (in_voice_mode() && key < VOICE_COUNT) {
-          // Voice mode: keyboard key 1/2 picks the Original/Orchid voice.
+          // Voice mode: keyboard key 1-9 picks the voice (see Synth.h).
           // The key doesn't play a note.
           combo_keys_held |= (1 << key);
           synth_voice = key;

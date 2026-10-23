@@ -1,9 +1,9 @@
 #ifndef LUSH_FX_H
 #define LUSH_FX_H
 
-// Chorus + small reverb for the Orchid-style voice. Mono, 44.1 kHz, int16
-// samples. Plain C++ with no audio-library dependency, so the unit tests can
-// run it on the host. effect_lush.h wraps it for the firmware's audio graph.
+// Chorus + small reverb for the voices (Orchid, Organ, Strings, ...). Mono,
+// 44.1 kHz, int16 samples. Plain C++ with no audio-library dependency, so the
+// unit tests can run it on the host. effect_lush.h wraps it for the firmware.
 //
 // RAM: about 8 KB (chorus 2 KB, reverb 6 KB). The reverb runs at half the
 // sample rate (22.05 kHz), which halves its memory and gives a darker tail.
@@ -13,17 +13,36 @@
 
 namespace LushFx {
 
+static const float SAMPLE_RATE = 44100.0f;
+
 static inline int16_t clamp16(const float x) {
   if (x > 32767.0f) return 32767;
   if (x < -32768.0f) return -32768;
   return static_cast<int16_t>(x);
 }
 
-// Juno-style chorus: two delay taps around 7.5 ms, each swept by its own slow
-// triangle LFO (0.5 Hz and 0.83 Hz).
+// Mix and modulation settings. Each voice has its own.
+struct Params {
+  float dry;          // dry signal level
+  float chorus;       // chorus (delayed taps) level
+  float reverb;       // reverb level
+  float rate1_hz;     // tap 1 LFO rate
+  float depth1_ms;    // tap 1 sweep, +/- around 7.5 ms (max 6)
+  float rate2_hz;     // tap 2 LFO rate
+  float depth2_ms;    // tap 2 sweep
+  float output_gain;  // overall level after mixing
+};
+
+// Orchid voice: slow, wide Juno-style chorus and a fair amount of reverb.
+static const Params ORCHID_PARAMS = {0.7f, 0.6f, 0.45f, 0.5f, 2.5f, 0.83f, 2.5f, 0.8f};
+
+// Chorus: two delay taps around 7.5 ms, each swept by its own triangle LFO.
+// Slow, deep sweeps give a Juno-style chorus; fast, shallow ones a vibrato.
 class Chorus {
  public:
   static const int SIZE = 1024;  // power of 2, ~23 ms
+
+  Chorus() { set(ORCHID_PARAMS); }
 
   void reset() {
     memset(buf, 0, sizeof(buf));
@@ -32,25 +51,42 @@ class Chorus {
     phase2 = 0x80000000u;  // half a cycle apart
   }
 
+  void set(const Params& p) {
+    inc1 = lfo_inc(p.rate1_hz);
+    inc2 = lfo_inc(p.rate2_hz);
+    depth1 = ms_to_samples(clamp_depth(p.depth1_ms));
+    depth2 = ms_to_samples(clamp_depth(p.depth2_ms));
+  }
+
   // Takes one dry sample, returns the wet (delayed) sample.
   float process(const float in) {
     buf[pos] = clamp16(in);
-    const float wet = (read(tap_delay(phase1)) + read(tap_delay(phase2))) * 0.5f;
-    phase1 += LFO1_INC;
-    phase2 += LFO2_INC;
+    const float wet =
+        (read(tap_delay(phase1, depth1)) + read(tap_delay(phase2, depth2))) * 0.5f;
+    phase1 += inc1;
+    phase2 += inc2;
     pos = (pos + 1) & (SIZE - 1);
     return wet;
   }
 
  private:
-  static const uint32_t LFO1_INC = 48695;  // 2^32 * 0.5 Hz / 44100
-  static const uint32_t LFO2_INC = 80834;  // 2^32 * 0.83 Hz / 44100
+  static constexpr float CENTER_MS = 7.5f;
 
-  // Delay in samples for an LFO phase: 7.5 ms +/- 2.5 ms.
-  static float tap_delay(const uint32_t phase) {
+  static float clamp_depth(const float ms) {
+    if (ms < 0.0f) return 0.0f;
+    if (ms > 6.0f) return 6.0f;
+    return ms;
+  }
+  static float ms_to_samples(const float ms) { return ms * SAMPLE_RATE / 1000.0f; }
+  static uint32_t lfo_inc(const float hz) {
+    return static_cast<uint32_t>(4294967296.0f * hz / SAMPLE_RATE);
+  }
+
+  // Delay in samples for an LFO phase: 7.5 ms +/- depth.
+  static float tap_delay(const uint32_t phase, const float depth) {
     const uint32_t tri = phase < 0x80000000u ? phase : ~phase;  // 0..2^31
     const float t = static_cast<float>(tri) * (1.0f / 2147483648.0f);
-    return 330.0f + 110.0f * (2.0f * t - 1.0f);
+    return ms_to_samples(CENTER_MS) + depth * (2.0f * t - 1.0f);
   }
 
   // Linear-interpolated read, `delay` samples behind the write position.
@@ -67,6 +103,10 @@ class Chorus {
   int pos;
   uint32_t phase1;
   uint32_t phase2;
+  uint32_t inc1;
+  uint32_t inc2;
+  float depth1;
+  float depth2;
 };
 
 // Schroeder/Freeverb-style reverb: 4 damped feedback combs in parallel, then
@@ -140,13 +180,21 @@ class Reverb {
 // Chorus, then reverb, mixed back with the dry signal.
 class Lush {
  public:
-  Lush() { reset(); }
+  Lush() {
+    set(ORCHID_PARAMS);
+    reset();
+  }
 
   // Clears all delay lines, so a newly enabled effect doesn't replay old audio.
   void reset() {
     chorus.reset();
     reverb.reset();
     rev_prev = 0.0f;
+  }
+
+  void set(const Params& p) {
+    params = p;
+    chorus.set(p);
   }
 
   // Processes `n` samples in place. `n` must be even (the reverb works on
@@ -159,22 +207,18 @@ class Lush {
       const float rev = reverb.process((v0 + v1) * 0.5f);
       const float rev0 = (rev_prev + rev) * 0.5f;
       rev_prev = rev;
-      samples[i] = clamp16((v0 + rev0 * REVERB_MIX) * OUTPUT_GAIN);
-      samples[i + 1] = clamp16((v1 + rev * REVERB_MIX) * OUTPUT_GAIN);
+      samples[i] = clamp16((v0 + rev0 * params.reverb) * params.output_gain);
+      samples[i + 1] = clamp16((v1 + rev * params.reverb) * params.output_gain);
     }
   }
 
  private:
-  static constexpr float DRY_MIX = 0.7f;
-  static constexpr float CHORUS_MIX = 0.6f;
-  static constexpr float REVERB_MIX = 0.45f;
-  static constexpr float OUTPUT_GAIN = 0.8f;
-
   float chorused(const int16_t in) {
     const float dry = in;
-    return dry * DRY_MIX + chorus.process(dry) * CHORUS_MIX;
+    return dry * params.dry + chorus.process(dry) * params.chorus;
   }
 
+  Params params;
   Chorus chorus;
   Reverb reverb;
   float rev_prev;

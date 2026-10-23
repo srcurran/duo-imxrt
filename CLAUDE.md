@@ -108,28 +108,39 @@ Full plan doc: https://claude.ai/code/artifact/c8336b8f-97ed-4703-bb62-ebb3c1ede
 - Flashed 2026-10-23 (bd19148, .bin sha256 1aee3389...), replacing main bf912e4. Owner
   checked it hands-on the same day: works as desired. Merged into `main`. To go back: reflash `restore/duo_main_bf912e4.bin`.
 
-## Voices (branch `claude/duo-voice-orchid-style-972622`, flashed 2026-10-23)
+## Voices (branch `claude/duo-voice-orchid-style-972622`)
 - Owner's design, 2026-10-23: keep the original voice. Hold **Accent** ("boost" pad)
-  while **stopped** => voice mode: keyboard key 1 = Original (default at power-on),
-  key 2 = Orchid. Like page mode, the keys don't play and it ends if Play starts.
-  Random's page mode wins if both are held. LEDs: keys 1-2 lit, the selected one
-  flashes. The choice is lost at power-off (the DUO saves nothing).
-- Orchid voice, inspired by the Telepathic Instruments Orchid and Quixotic7/ChoralRootFM1
-  (GPL-3, so ideas only, no code taken): same oscillators/filter, plus a Juno-style
-  chorus and a small reverb (`shared/duo/lush_fx.h`, wrapped by `effect_lush.h`,
-  after bitcrusher1). Also amp attack 40 ms, filter env attack 250 / release 600,
-  resonance 0.7-2.0, release knob 60 ms-1.1 s. Settings in `voice_apply()` (Synth.h).
-- Original voice is unchanged: the effect passes blocks through untouched.
+  while **stopped** => voice mode: keyboard keys 1-9 pick the voice; key 1 = Original
+  (default at power-on). Like page mode, the keys don't play (key 10 still does) and it
+  ends if Play starts. Random's page mode wins if both are held. LEDs: keys 1-9 lit,
+  the selected one flashes. The choice is lost at power-off (the DUO saves nothing).
+- Voices (table with each voice's Detune / Pulse Width knob roles at the top of the
+  voice code in Synth.h): 1 Original, 2 Orchid, 3 Organ, 4 Strings, 5 Acid, 6 Pluck,
+  7 FM, 8 Fold, 9 Chord. All share the filter, envelopes, bitcrusher, delay, glide and
+  Accent. Fold: the Filter knob sets the fold amount, the filter acts as a low-pass gate.
+- Orchid voice and the idea, inspired by the Telepathic Instruments Orchid and
+  Quixotic7/ChoralRootFM1 (GPL-3, so ideas only, no code taken). Owner liked the Orchid
+  voice hands-on 2026-10-23 and asked for all the others.
+- Code: `voice_apply()` (fixed settings, starts from `voice_reset()` = Original),
+  `voice_update_sources()` (knobs, every loop), `voice_note_on/off()` (Pluck strike,
+  FM modulator envelope), all in Synth.h. Extra sources osc3, osc4, fm_mod ->
+  fm_mod_env -> fm_carrier (Teensy phase modulation), pluck -> voice_mixer -> mixer1
+  ch 2. fold_fx sits between mixer1 and filter1, lush_fx (chorus + reverb, per-voice
+  `LushFx::Params`) after bitcrusher1. DSP in plain C++, host-tested:
+  `shared/duo/lush_fx.h`, `pluck_fx.h` (Karplus-Strong), `fold_fx.h`.
+- Original voice is unchanged: the new sources are silent and idle (amplitude 0 / not
+  enabled) and fold_fx and lush_fx pass blocks through untouched.
 - Envelope times past ~1.4 s round the step to zero and the note never ends
   (`LinearEnvelope::calcRate`), so keep attack/release under that.
-- Reverb runs at 22.05 kHz to save RAM. DTCM (m_data) now 22 KB of 32 KB.
-- Unit tests: `lush_fx_test` (silence, tail, decay, no wrap at full scale, reset).
-- Flashed 2026-10-23 (540b6bb, .bin sha256 98f0e5e5..., saved as
-  `restore/duo_voices_540b6bb.bin`). Not yet checked hands-on. It replaced a
-  `drum-pads` dev build (74d3f68 plus uncommitted edits, from another session),
-  so drum pads aren't on the DUO now. Both branches start from main 46d1fcc.
-- Mix levels (`DRY_MIX`, `CHORUS_MIX`, `REVERB_MIX`, `OUTPUT_GAIN`) are first
-  guesses, to tune by ear on the DUO.
+- RAM: reverb runs at 22.05 kHz; Pluck's 4 KB loop buffer is in OCRAM (DMAMEM, not
+  zeroed at boot, cleared on enable). DTCM (m_data) 24.4 KB of 32 KB, OCRAM 54.5 of
+  64 KB (mostly AudioMemory). CPU not measured; estimated well under 10%.
+- Unit tests: `lush_fx_test`, `voice_fx_test` (pluck tuning/decay/ring length, fold,
+  organ vibrato).
+- Mix levels and voice settings are first guesses, to tune by ear on the DUO.
+- Flashed 2026-10-23: 540b6bb (Original + Orchid only, `restore/duo_voices_540b6bb.bin`).
+  It replaced a `drum-pads` dev build (74d3f68 plus uncommitted edits, from another
+  session), so drum pads aren't on the DUO now. Both branches start from main 46d1fcc.
 
 ## Mod 2: drum pads (planned)
 Code: `brains2/apps/duo/duo-firmware/src/DrumSynth.h`, `brains2/apps/duo/boards/*/drums.h`.
