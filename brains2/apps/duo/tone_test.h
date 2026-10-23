@@ -73,6 +73,7 @@ static void fix_knobs() {
   synth.filter = synth.resonance = synth.release = 512;
   synth.detune = synth.pulseWidth = 512;
   synth.amplitude = VOLUME;
+  synth.gateLength = (NOTE_GATE_MS - 10) * 1023 / 190;  // gate knob = the notes' length
   synth.glide = synth.crush = synth.accent = synth.delay = false;
 }
 
