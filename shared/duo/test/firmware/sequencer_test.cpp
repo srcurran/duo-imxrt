@@ -409,6 +409,61 @@ void step_offset_wraps_at_length() {
   ASSERT_EQ(4, seq.cur_step_index());
 }
 
+// --- 64 steps (8 pages) ---
+
+void max_length_is_64_steps() {
+  auto seq = make_cleared_sequencer();
+  seq.set_length(200);
+  ASSERT_EQ(64, seq.get_length());
+  ASSERT_EQ(8, seq.page_count());
+}
+
+void lengthening_32_to_64_copies_pattern() {
+  auto seq = make_cleared_sequencer();
+  seq.set_length(32);
+  seq.toggle_step(5);
+  seq.set_step_note(5, 45);
+  seq.toggle_step(30);
+  seq.set_step_note(30, 50);
+
+  seq.set_length(64);
+  ASSERT_EQ(4, count_enabled_steps(seq));
+  ASSERT_TRUE(get_step_enabled(seq, 37));
+  ASSERT_EQ(45, get_note(seq, 37));
+  ASSERT_TRUE(get_step_enabled(seq, 62));
+  ASSERT_EQ(50, get_note(seq, 62));
+}
+
+void plays_all_64_steps_then_wraps() {
+  auto seq = make_cleared_sequencer();
+  seq.set_length(64);
+  for (int i = 0; i < 64; ++i) {
+    seq.set_step_note(i, i);
+  }
+  set_all_steps_active(seq, true);
+
+  seq.run();
+  for (int i = 0; i < 63; ++i) {
+    seq.advance();
+  }
+  ASSERT_EQ(63, NoteTracker::last_note);
+  ASSERT_EQ(7, seq.cur_page());
+  ASSERT_EQ(63, seq.step_on_cur_page(7));
+
+  seq.advance();
+  ASSERT_EQ(0, NoteTracker::last_note);
+  ASSERT_EQ(0, seq.cur_step_index());
+}
+
+void pages_reach_page_8() {
+  auto seq = make_cleared_sequencer();
+  seq.set_length(64);
+  seq.set_page(7);
+  ASSERT_EQ(56, seq.cur_step_index());
+  ASSERT_EQ(7, seq.cur_page());
+  ASSERT_PLAYED_COUNT(0);
+}
+
 // --- Page mode (cursor and page moves while stopped) ---
 
 void counts_pages_from_length() {
@@ -597,6 +652,10 @@ int main() {
   RUN_TEST(Tests::step_buttons_follow_playhead_page);
   RUN_TEST(Tests::plays_steps_on_later_pages_while_running);
   RUN_TEST(Tests::step_offset_wraps_at_length);
+  RUN_TEST(Tests::max_length_is_64_steps);
+  RUN_TEST(Tests::lengthening_32_to_64_copies_pattern);
+  RUN_TEST(Tests::plays_all_64_steps_then_wraps);
+  RUN_TEST(Tests::pages_reach_page_8);
   RUN_TEST(Tests::counts_pages_from_length);
   RUN_TEST(Tests::set_page_moves_cursor_without_playing);
   RUN_TEST(Tests::set_cursor_moves_to_step_without_playing);

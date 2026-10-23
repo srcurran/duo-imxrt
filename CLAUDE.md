@@ -62,7 +62,7 @@ Full plan doc: https://claude.ai/code/artifact/c8336b8f-97ed-4703-bb62-ebb3c1ede
   **stopped**. While running, Random works exactly as in stock firmware and nothing below
   applies. Random's stock one-off jump when stopped is gone (owner accepted that).
   `page_mode_held` + `in_page_mode()` in `globals.h`; page mode ends if Play starts.
-  - Keyboard key 1/2/3/4 => 8/16/24/32 steps. Default 8 at power-on. Combo keys don't play
+  - Keyboard keys 1-8 => 8, 16, ... 64 steps (max 32 / keys 1-4 until 2026-10-23). Default 8 at power-on. Combo keys don't play
     or record a note; their release is swallowed too (`combo_keys_held`). Keys 5-10 play.
   - **Up/Down** => next/previous page, moving the cursor to the page's first step
     (`Sequencer::set_page`). Stops at the first/last page, no wrap-around (owner's call).
@@ -72,7 +72,7 @@ Full plan doc: https://claude.ai/code/artifact/c8336b8f-97ed-4703-bb62-ebb3c1ede
     note is the step after it, as in stock firmware).
   - LEDs: keyboard is a length meter (keys 1..N lit in their colours, rest dark) and the
     viewed page's key flashes (200 ms on/off), also with 8 steps.
-- Page indicator outside page mode: when length > 8, the playing page's key (1-4) is off
+- Page indicator outside page mode: when length > 8, the playing page's key (1-8) is off
   (owner found off more obvious than white). With 8 steps all keys are lit.
 - Rests while stopped (owner's request 2026-10-22): pressing the step button under the
   breathing cursor toggles that step; turning it off moves the cursor on one step
@@ -84,7 +84,7 @@ Full plan doc: https://claude.ai/code/artifact/c8336b8f-97ed-4703-bb62-ebb3c1ede
   `page * 8 + button` on the shown page (`Sequencer::step_on_cur_page`).
 - Lengthening copies the existing pattern into the new steps (owner confirmed: keep copy).
   Side effect: shorten then lengthen overwrites the later steps.
-- Sequencer core: `shared/duo/seq.h/.cpp` store `MAX_STEPS = 32` with a runtime `length`.
+- Sequencer core: `shared/duo/seq.h/.cpp` store `MAX_STEPS = 64` (was 32; raised 2026-10-23, branch `claude/sequence-64-steps`) with a runtime `length`.
   Helpers: `wrapped_step()`, `set_length()`, `cur_page()`, `cur_page_position()`,
   `step_on_cur_page()`. Unit tests cover length, wrapping, copying and paging.
 - Builds cleanly for DUO_BRAINS_2.3 with the rescue combo. Earlier versions were flashed

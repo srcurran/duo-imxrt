@@ -184,7 +184,7 @@ static void process_key(const char k, const char state) {
         if (in_setup) {
           midi_set_channel(key + 1);
         } else if (in_page_mode() && key < pages) {
-          // Page mode: keyboard key 1/2/3/4 sets the length to 8/16/24/32
+          // Page mode: keyboard keys 1-8 set the length to 8, 16, ... 64
           // steps. The key doesn't play a note.
           combo_keys_held |= (1 << key);
           sequencer.set_length((key + 1) * Sequencer::STEPS_PER_PAGE);
