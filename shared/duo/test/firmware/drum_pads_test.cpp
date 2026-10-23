@@ -170,6 +170,25 @@ void landing_on_middle_then_neighbour_plays_once() {
   ASSERT_ZONE(NoZone, hold(pad, true, true, false, 10, 100));
 }
 
+void second_finger_on_far_edge_plays_its_drum() {
+  Pad pad;
+  ASSERT_ZONE(Left, hold(pad, true, false, false, 0, 300)); // thumb rests
+  ASSERT_ZONE(Right, hold(pad, true, false, true, 301, 340)); // finger taps right
+  // Finger lifts: nothing plays.
+  ASSERT_ZONE(NoZone, hold(pad, true, false, false, 341, 450));
+  // Taps again.
+  ASSERT_ZONE(Right, hold(pad, true, false, true, 451, 490));
+  ASSERT_ZONE(NoZone, hold(pad, true, false, false, 491, 600));
+}
+
+void lifting_never_plays() {
+  // Flat finger across left+middle+right, then lifting the left side.
+  Pad pad;
+  ASSERT_ZONE(Middle, hold(pad, true, true, true, 0, 50));
+  ASSERT_ZONE(NoZone, hold(pad, false, true, true, 51, 150));
+  ASSERT_ZONE(NoZone, hold(pad, false, false, true, 151, 250));
+}
+
 } // namespace Tests
 
 void setUp(void) {}
@@ -192,5 +211,7 @@ int main() {
   RUN_TEST(Tests::hold_time_restarts_after_lift);
   RUN_TEST(Tests::middle_ignores_brushing_a_neighbour);
   RUN_TEST(Tests::landing_on_middle_then_neighbour_plays_once);
+  RUN_TEST(Tests::second_finger_on_far_edge_plays_its_drum);
+  RUN_TEST(Tests::lifting_never_plays);
   return UNITY_END();
 }
