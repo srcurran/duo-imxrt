@@ -171,6 +171,9 @@ void Sequencer::advance_running() {
 }
 
 void Sequencer::record_note(const uint8_t note, uint8_t step) {
+  if (performing) {
+    return;
+  }
   step = wrapped_step(step);
   steps[step].enabled = true;
   steps[step].note = note;

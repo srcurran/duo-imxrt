@@ -94,6 +94,18 @@ Full plan doc: https://claude.ai/code/artifact/c8336b8f-97ed-4703-bb62-ebb3c1ede
   choice in the bf912e4 merge; it used to be half a cycle opposite): note colour if
   enabled, white if empty.
 
+## Perform mode (built, branch `claude/sequence-perform-mode-f19b2e`, not yet flashed)
+- Owner's design, 2026-10-23: hold **Random** while stopped and press **Play** => the
+  sequence runs in perform mode. Keys (and the arp) play over it but record nothing.
+  Stop, then Play again => normal recording mode.
+- Play LED is purple (`LED_PERFORM`) while performing, white otherwise. Step buttons
+  still toggle steps; Up/Down still transpose; Random works as stock while running.
+- The DUO is monophonic: a live note replaces the sequence note while held, and the
+  sequence comes back on release.
+- Code: `Sequencer::performing` (`set_performing()`, cleared by `stop()`, also on MIDI
+  stop); `record_note()` returns early when set. Combo in `main.cpp` (SEQ_START while
+  `in_page_mode()`). Five unit tests (`perform_mode_*`, `stop_ends_perform_mode`).
+
 ## Mod 2: drum pads (planned)
 Code: `brains2/apps/duo/duo-firmware/src/DrumSynth.h`, `brains2/apps/duo/boards/*/drums.h`.
 - Timing: pads are polled only every ~11 ms (`millis() - update_time > 10`). Poll every

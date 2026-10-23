@@ -10,6 +10,8 @@
 #define CORRECTION_SK6812 0xFFF1E0
 #define CORRECTION_SK6805 0xFFD3E0
 #define LED_WHITE CRGB(230,255,150)
+// Play LED colour while running in perform mode (keys don't record).
+#define LED_PERFORM CRGB(200,0,255)
 
 #define leds(A) physical_leds[led_order[A]]
 
@@ -177,7 +179,7 @@ void led_update() {
   }
 
   if (sequencer.is_running()) {
-    led_play = LED_WHITE;
+    led_play = sequencer.is_performing() ? LED_PERFORM : LED_WHITE;
   } else {
     // Play LED breathes: 2 s from full down to 25%, 2 s back to full.
     led_play = LED_WHITE;

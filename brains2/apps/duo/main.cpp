@@ -227,7 +227,14 @@ static void process_key(const char k, const char state) {
           page_mode_held = true;
         }
       } else if (k == SEQ_START) {
-        sequencer_toggle_start();
+        if (in_page_mode()) {
+          // Random + Play from stopped: start in perform mode. Keys play
+          // over the sequence without recording. Stop ends perform mode.
+          sequencer_start();
+          sequencer.set_performing(true);
+        } else {
+          sequencer_toggle_start();
+        }
       }
       break;
     case HOLD:
