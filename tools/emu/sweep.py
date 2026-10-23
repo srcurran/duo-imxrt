@@ -25,7 +25,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 EMU = os.path.join(HERE, "build", "emu")
-VOICES = ["Original", "Orchid", "Organ", "Strings", "Acid", "Pluck", "FM", "Fold", "Chord", "Funk"]
+VOICES = ["Original", "Acid", "Funk", "Fold", "Pluck", "FM", "Organ", "Strings", "Orchid", "Chord"]  # keys 1-10, as globals.h
 # Expected speaker loudness vs Original, dB, for voices meant to sit above or
 # below Original (0 for any voice not listed). Funk had -4 before the sweep
 # covered octaves and short notes; across those it matches Original.

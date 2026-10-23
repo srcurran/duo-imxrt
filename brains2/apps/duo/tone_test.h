@@ -9,7 +9,7 @@
 //   start signal  1 kHz 2 s, silence 2 s, 1 kHz 2 s, silence 4 s
 //   tones         14 sine tones, 100 Hz - 8 kHz, each 4 s + 2 s silence
 //   marker        8 s silence in all
-//   voices        keys 1-9 in order, each 6 s of a fixed 16th-note pattern
+//   voices        keys 1-10 in order, each 6 s of a fixed 16th-note pattern
 //                 with every knob at noon, + 2 s silence
 //   end signal    1 kHz 2 s
 // Every tone has the same electrical level. Play again stops the test.
@@ -24,7 +24,7 @@ struct Step {
   uint16_t ms;
   Kind kind;
   uint16_t hz;    // TONE
-  uint8_t voice;  // VOICE: 0-8 (keys 1-9)
+  uint8_t voice;  // VOICE: 0-9 (keys 1-10)
 };
 
 static const Step STEPS[] = {
@@ -40,12 +40,12 @@ static const Step STEPS[] = {
     {4000, TONE, 6000, 0}, {2000, SILENCE, 0, 0}, {4000, TONE, 8000, 0}, {2000, SILENCE, 0, 0},
     // marker: 2 + 6 = 8 s silence
     {6000, SILENCE, 0, 0},
-    // voices, keys 1-9
+    // voices, keys 1-10
     {6000, VOICE, 0, 0}, {2000, SILENCE, 0, 0}, {6000, VOICE, 0, 1}, {2000, SILENCE, 0, 0},
     {6000, VOICE, 0, 2}, {2000, SILENCE, 0, 0}, {6000, VOICE, 0, 3}, {2000, SILENCE, 0, 0},
     {6000, VOICE, 0, 4}, {2000, SILENCE, 0, 0}, {6000, VOICE, 0, 5}, {2000, SILENCE, 0, 0},
     {6000, VOICE, 0, 6}, {2000, SILENCE, 0, 0}, {6000, VOICE, 0, 7}, {2000, SILENCE, 0, 0},
-    {6000, VOICE, 0, 8}, {2000, SILENCE, 0, 0},
+    {6000, VOICE, 0, 8}, {2000, SILENCE, 0, 0}, {6000, VOICE, 0, 9}, {2000, SILENCE, 0, 0},
     // end signal
     {2000, TONE, 1000, 0},
 };

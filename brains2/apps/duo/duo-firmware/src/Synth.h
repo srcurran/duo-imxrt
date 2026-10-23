@@ -219,16 +219,16 @@ inline void audio_volume(int volume) {
 //
 //   key  voice     Detune knob                 Pulse Width knob
 //   1    Original  interval (stock)            pulse width (stock)
-//   2    Orchid    interval                    pulse width
-//   3    Organ     upper drawbar (2 2/3'..1')  upper drawbar level
-//   4    Strings   ensemble spread             octave-up level
-//   5    Acid      filter decay                saw <-> square
-//   6    Pluck     ring length                 brightness
-//   7    FM        frequency ratio             FM depth
-//   8    Fold      interval                    second wave level
+//   2    Acid      filter decay                saw <-> square
+//   3    Funk      filter snap (30-400 ms)     pulse width
+//   4    Fold      interval                    second wave level
 //                  (and the Filter knob sets the fold amount)
-//   9    Chord     chord type                  4th note level
-//   10   Funk      filter snap (30-400 ms)     pulse width
+//   5    Pluck     ring length                 brightness
+//   6    FM        frequency ratio             FM depth
+//   7    Organ     upper drawbar (2'..1')      upper drawbar level
+//   8    Strings   ensemble spread             octave-up level
+//   9    Orchid    interval                    pulse width
+//   10   Chord     chord type                  4th note level
 
 static const LushFx::Params ORGAN_LUSH = {0.55f, 0.75f, 0.25f, 6.7f, 0.35f, 7.3f, 0.25f, 0.9f};
 static const LushFx::Params STRINGS_LUSH = {0.5f, 0.85f, 0.35f, 0.6f, 3.0f, 5.8f, 0.3f, 0.85f};
@@ -288,26 +288,30 @@ static inline int knob_index(const int knob, const int count) {
   return i < 0 ? 0 : (i >= count ? count - 1 : i);
 }
 
-// Per-voice level trim in dB: each voice's median loudness matches
+// Per-voice level trim in dB (by voice name, so the key order doesn't
+// matter): each voice's median loudness matches
 // Original's across the emulator's knob sweep (tools/emu/sweep.py, LUFS,
 // 5832 renders). Applied to the voice's input to the filter (mixer1), so
 // every stage after it gets the headroom too; for Fold, to the folder's
 // output instead (its input level sets how hard it folds).
-static const float VOICE_TRIM_DB[VOICE_COUNT] = {
-    0.0f,   // Original
-    0.0f,   // Orchid   (-0.7 dB, close enough)
-    -7.5f,  // Organ
-    -5.0f,  // Strings
-    -4.5f,  // Acid
-    -5.5f,  // Pluck    (rings on whatever the note length, so it read loud
-            //           once very short notes joined the sweep; -1.5 more
-            //           after its filter range started higher)
-    -7.0f,  // FM
-    -5.5f,  // Fold
-    -3.0f,  // Chord
-    0.0f,   // Funk     (on par with Original across the full sweep with
-            //           octaves and short notes: +0.7 dB on the speaker)
-};
+static float voice_trim_db(const uint8_t voice) {
+  switch (voice) {
+    case VOICE_ORCHID:  return 0.0f;   // (-0.7 dB, close enough)
+    case VOICE_ORGAN:   return -7.5f;
+    case VOICE_STRINGS: return -5.0f;
+    case VOICE_ACID:    return -4.5f;
+    case VOICE_PLUCK:   return -5.5f;  // rings on whatever the note length, so
+                                       // it read loud once very short notes
+                                       // joined the sweep; -1.5 more after its
+                                       // filter range started higher
+    case VOICE_FM:      return -7.0f;
+    case VOICE_FOLD:    return -5.5f;
+    case VOICE_CHORD:   return -3.0f;
+    case VOICE_FUNK:    return 0.0f;   // on par with Original across the full
+                                       // sweep with octaves and short notes
+    default:            return 0.0f;   // Original
+  }
+}
 // The selected voice's mixer1 gains before the trim, and its fold trim.
 static float voice_mix[3] = {0.2f, 0.4f, 0.0f};
 static float fold_trim = 1.0f;
@@ -464,8 +468,8 @@ void voice_apply() {
     default:  // VOICE_ORIGINAL
       break;
   }
-  // Level trim (see VOICE_TRIM_DB). Original: x1, so its gains are unchanged.
-  const float trim = powf(10.0f, VOICE_TRIM_DB[synth_voice] / 20.0f);
+  // Level trim (see voice_trim_db). Original: x1, so its gains are unchanged.
+  const float trim = powf(10.0f, voice_trim_db(synth_voice) / 20.0f);
   const float mix_trim = synth_voice == VOICE_FOLD ? 1.0f : trim;
   fold_trim = synth_voice == VOICE_FOLD ? trim : 1.0f;
   for (int i = 0; i < 3; i++) {

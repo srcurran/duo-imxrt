@@ -25,7 +25,7 @@ from scipy import signal
 from scipy.io import wavfile
 
 SR = 44100
-VOICES = ["Original", "Orchid", "Organ", "Strings", "Acid", "Pluck", "FM", "Fold", "Chord"]
+VOICES = ["Original", "Acid", "Funk", "Fold", "Pluck", "FM", "Organ", "Strings", "Orchid", "Chord"]  # keys 1-10, as globals.h
 
 
 def a_weighting_db(f):
