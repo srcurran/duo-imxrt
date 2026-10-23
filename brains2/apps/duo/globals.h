@@ -32,6 +32,13 @@ bool page_mode_held = false;
 // Keyboard keys (bit per key) pressed as part of a length combo. Their release
 // is swallowed too, so they never play or release a note.
 uint16_t combo_keys_held = 0;
+// Voices: hold Accent while stopped (voice mode) and press keyboard key 1/2.
+// Original is the stock DUO sound and the default at power-on.
+enum Voice : uint8_t { VOICE_ORIGINAL = 0, VOICE_ORCHID = 1, VOICE_COUNT = 2 };
+uint8_t synth_voice = VOICE_ORIGINAL;
+// Voice mode: Accent pressed while the sequencer is stopped. Like page mode,
+// it ends as soon as the sequencer runs.
+bool voice_mode_held = false;
 bool dfu_flag = 0;
 bool in_setup = true;
 
@@ -73,4 +80,9 @@ Sequencer::Sequencer
 // sequencer starts running, even if Random is still held.
 bool in_page_mode() {
   return page_mode_held && !sequencer.is_running();
+}
+
+// True while voice mode is active (see voice_mode_held).
+bool in_voice_mode() {
+  return voice_mode_held && !sequencer.is_running();
 }

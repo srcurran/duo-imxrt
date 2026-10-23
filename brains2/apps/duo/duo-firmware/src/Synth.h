@@ -6,6 +6,7 @@
 #include <effect_delay.h>
 #include <effect_fade.h>
 #include "shared/duo/effect_custom_envelope.h"
+#include "shared/duo/effect_lush.h"
 #include <effect_multiply.h>
 #include <filter_variable.h>
 #include <mixer.h>
@@ -29,6 +30,9 @@ AudioEffectDelay         delay1;         //xy=712.0999755859375,174.100006103515
 AudioFilterStateVariable delay_filter;         //xy=712.0999755859375,174.10000610351562
 AudioEffectFade          delay_fader;
 AudioEffectBitcrusher    bitcrusher1;    //xy=718.1000061035156,81
+// Chorus + reverb for the Orchid voice. Passes audio through untouched for
+// the original voice. Declared straight after bitcrusher1 so it adds no latency.
+AudioEffectLush          lush_fx;
 AudioMixer4              mixer_delay;     //xy=728.0999755859375,279.1000061035156
 AudioMixer4              mixer_output;         //xy=861.1000061035156,100
 AudioEffectFade          pop_suppressor;          //xy=1062,292
@@ -58,8 +62,9 @@ AudioConnection          patchCord13(delay_filter, 2, delay_fader, 0);
 
 
 
-AudioConnection          patchCord14(bitcrusher1, 0, mixer_output, 0);
-AudioConnection          patchCord15(bitcrusher1, 0, delay_envelope, 0);
+AudioConnection          patchCord14a(bitcrusher1, 0, lush_fx, 0);
+AudioConnection          patchCord14(lush_fx, 0, mixer_output, 0);
+AudioConnection          patchCord15(lush_fx, 0, delay_envelope, 0);
 AudioConnection          patchCord16(delay_envelope, 0, mixer_delay, 0);
 // AudioConnection          patchCord13(mixer_delay, delay1);
 
@@ -78,6 +83,7 @@ AudioConnection          patchCord30(mixer_output, peak2);
 void audio_init();
 void audio_volume(int volume);
 void synth_update();
+void voice_apply();
 
 void audio_init() {
   // assume AudioNoInterrupts
@@ -167,6 +173,24 @@ inline void audio_volume(int volume) {
   }
 }
 
+// Applies the settings of the selected voice (synth_voice) that don't follow
+// a knob. VOICE_ORIGINAL uses exactly the values audio_init() always set.
+void voice_apply() {
+  AudioNoInterrupts();
+  if (synth_voice == VOICE_ORCHID) {
+    envelope1.attack(40);   // soft bloom instead of a click
+    envelope2.attack(250);  // the filter opens slowly
+    envelope2.release(600);
+    lush_fx.enable(true);
+  } else {
+    envelope1.attack(2);
+    envelope2.attack(15);
+    envelope2.release(300);
+    lush_fx.enable(false);
+  }
+  AudioInterrupts();
+}
+
 void synth_update() {
 
   float osc_saw_amplitude = 0.4f;
@@ -183,7 +207,10 @@ void synth_update() {
   }
 
   float osc_pulse_pulseWidth = map(synth.pulseWidth,0,1023,500,950)/1000.0f;
-  float filter_resonance = map(synth.resonance,0,1023,70,320)/100.0f;
+  const bool orchid = synth_voice == VOICE_ORCHID;
+  // Orchid: gentler resonance range (0.7-2.0), so pads don't whistle.
+  float filter_resonance =
+      map(synth.resonance, 0, 1023, 70, orchid ? 200 : 320) / 100.0f;
   
   if(synth.accent) {
     filter_resonance = 4.0f;
@@ -200,7 +227,13 @@ void synth_update() {
   filter1.frequency((synth.filter/2)+30);
   filter1.resonance(filter_resonance); // 0.7-3.2 range
 
-  envelope1.release(((synth.release*synth.release) >> 11)+30);
+  // Orchid: longer release, 60 ms to ~1.1 s. Keep it under ~1.4 s: past that
+  // the envelope's step rounds to zero and the note never fades out.
+  if (orchid) {
+    envelope1.release(((synth.release*synth.release) >> 10)+60);
+  } else {
+    envelope1.release(((synth.release*synth.release) >> 11)+30);
+  }
 
   bitcrusher1.sampleRate(bitcrusher_samplerate);
 

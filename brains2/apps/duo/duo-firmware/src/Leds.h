@@ -137,10 +137,12 @@ uint8_t breathe_brightness(const uint16_t phase_offset) {
 void led_update() {
   // In page mode the keyboard shows the length as a meter: keys 1-4 light up
   // one per 8 steps (in their own colours), all other keys go dark.
+  // In voice mode the voice keys light up, the selected one flashes.
   const bool page_mode = in_page_mode();
+  const bool voice_mode = !page_mode && in_voice_mode();
   const uint8_t pages = sequencer.page_count();
   for (uint16_t i = 0; i < 10; i++) {
-    if (page_mode && i >= pages) {
+    if ((page_mode && i >= pages) || (voice_mode && i >= VOICE_COUNT)) {
       physical_leds[i + 9] = CRGB::Black;
     } else {
       physical_leds[i + 9] = COLORS[SCALE[i] % 24];
@@ -155,6 +157,11 @@ void led_update() {
     const bool flash_off = (millis() / 200) % 2;
     if (flash_off) {
       physical_leds[page_led] = CRGB::Black;
+    }
+  } else if (voice_mode) {
+    const bool flash_off = (millis() / 200) % 2;
+    if (flash_off) {
+      physical_leds[synth_voice + 9] = CRGB::Black;
     }
   } else if (pages > 1) {
     physical_leds[page_led] = CRGB::Black;

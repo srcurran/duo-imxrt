@@ -108,6 +108,25 @@ Full plan doc: https://claude.ai/code/artifact/c8336b8f-97ed-4703-bb62-ebb3c1ede
 - Flashed 2026-10-23 (bd19148, .bin sha256 1aee3389...), replacing main bf912e4. Owner
   checked it hands-on the same day: works as desired. Merged into `main`. To go back: reflash `restore/duo_main_bf912e4.bin`.
 
+## Voices (branch `claude/duo-voice-orchid-style-972622`, built 2026-10-23, not flashed yet)
+- Owner's design, 2026-10-23: keep the original voice. Hold **Accent** ("boost" pad)
+  while **stopped** => voice mode: keyboard key 1 = Original (default at power-on),
+  key 2 = Orchid. Like page mode, the keys don't play and it ends if Play starts.
+  Random's page mode wins if both are held. LEDs: keys 1-2 lit, the selected one
+  flashes. The choice is lost at power-off (the DUO saves nothing).
+- Orchid voice, inspired by the Telepathic Instruments Orchid and Quixotic7/ChoralRootFM1
+  (GPL-3, so ideas only, no code taken): same oscillators/filter, plus a Juno-style
+  chorus and a small reverb (`shared/duo/lush_fx.h`, wrapped by `effect_lush.h`,
+  after bitcrusher1). Also amp attack 40 ms, filter env attack 250 / release 600,
+  resonance 0.7-2.0, release knob 60 ms-1.1 s. Settings in `voice_apply()` (Synth.h).
+- Original voice is unchanged: the effect passes blocks through untouched.
+- Envelope times past ~1.4 s round the step to zero and the note never ends
+  (`LinearEnvelope::calcRate`), so keep attack/release under that.
+- Reverb runs at 22.05 kHz to save RAM. DTCM (m_data) now 22 KB of 32 KB.
+- Unit tests: `lush_fx_test` (silence, tail, decay, no wrap at full scale, reset).
+- Mix levels (`DRY_MIX`, `CHORUS_MIX`, `REVERB_MIX`, `OUTPUT_GAIN`) are first
+  guesses, to tune by ear on the DUO.
+
 ## Mod 2: drum pads (planned)
 Code: `brains2/apps/duo/duo-firmware/src/DrumSynth.h`, `brains2/apps/duo/boards/*/drums.h`.
 - Timing: pads are polled only every ~11 ms (`millis() - update_time > 10`). Poll every

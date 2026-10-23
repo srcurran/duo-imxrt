@@ -125,7 +125,19 @@ static void pots_read() {
 
   synth.glide = pinRead(GLIDE_PIN);
   synth.crush = pinRead(BITC_PIN);
-  synth.accent = pinRead(ACCENT_PIN);
+  // Accent pressed while stopped => voice mode, until it's let go. The pad
+  // has to read released for 30 ms first, so a flicker doesn't end it.
+  static unsigned long accent_seen_time = 0;
+  const bool accent = pinRead(ACCENT_PIN);
+  if (accent) {
+    if (!voice_mode_held && !synth.accent) {
+      voice_mode_held = !sequencer.is_running();
+    }
+    accent_seen_time = millis();
+  } else if (millis() - accent_seen_time > 30) {
+    voice_mode_held = false;
+  }
+  synth.accent = accent;
   synth.delay = pinRead(DELAY_PIN);
 }
 
@@ -171,6 +183,12 @@ static void process_key(const char k, const char state) {
           // steps. The key doesn't play a note.
           combo_keys_held |= (1 << key);
           sequencer.set_length((key + 1) * Sequencer::STEPS_PER_PAGE);
+        } else if (in_voice_mode() && key < VOICE_COUNT) {
+          // Voice mode: keyboard key 1/2 picks the Original/Orchid voice.
+          // The key doesn't play a note.
+          combo_keys_held |= (1 << key);
+          synth_voice = key;
+          voice_apply();
         } else {
           keyboard_set_note(SCALE[key]);
         }
