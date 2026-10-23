@@ -188,6 +188,19 @@ Code: touch logic in `shared/duo/drum_pads.h` (pure C++, unit tested in
   Not yet checked hands-on. Those flashes replaced the drum-pads build; voices were
   then merged into main with drum pads (2026-10-23).
 
+- Fixes from the owner's video 2026-10-23 (branch `claude/voice-short-notes`):
+  (1) Strings (and Orchid) went near-silent on short sequenced notes (~30 ms) with the
+  Filter knob low: their slow swells (Strings amp 150 / filter 400 ms, Orchid filter
+  250 ms) never got going. Now Strings 60 / 120 ms, Orchid filter 80 ms; within ~2-6 dB
+  of Original at 30 ms notes and Filter at 0. The sweep now includes 30 ms notes.
+  (2) Organ sounded "very sharp": through the speaker (no output below ~270 Hz) its
+  sine fundamental vanished and with the octave plus an even drawbar (6x/8x) the ear
+  heard the note an octave up. Organ now always adds a quint (3x) and the knob's
+  drawbars are 4x/5x/6x/8x; heard pitch is right at every setting except the lowest
+  key with Pulse Width high (there only the drawbar is above 270 Hz: a speaker limit).
+  (3) Pluck trim -2 -> -4 dB (it rings regardless of note length; read +2.3 dB with
+  short notes in the sweep; owner's DUO reading had it +4.7). No clipping left.
+
 ## Mac emulator (tools/emu, 2026-10-23)
 - Runs the real firmware audio code on the Mac: Teensy audio objects, AudioStream.cpp,
   Synth.h, Pitch.h, globals.h, seq.cpp. `tools/emu/shim/host_platform.h` replaces the

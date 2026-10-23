@@ -120,6 +120,9 @@ struct Params {
   int test = 0;
   int nolush = 0;  // debugging: bypass the chorus/reverb
   int probe = 0;   // debugging: print stage peaks per note
+  // Switch voice while playing, as Accent + Up/Down does: Accent held from
+  // switch_ms - 400 to switch_ms + 400, voice changes to then_key at switch_ms.
+  int then_key = 0, switch_ms = 0;
 };
 
 static void write_wav(const std::string& path, const std::vector<int16_t>& s) {
@@ -212,6 +215,8 @@ int main(int argc, char** argv) {
     else if (k == "test") p.test = n;
     else if (k == "nolush") p.nolush = n;
     else if (k == "probe") p.probe = n;
+    else if (k == "then_key") p.then_key = n;
+    else if (k == "switch_ms") p.switch_ms = n;
     else { fprintf(stderr, "unknown key: %s\n", k.c_str()); return 1; }
   }
   std::vector<int> notes;
@@ -283,6 +288,13 @@ int main(int argc, char** argv) {
   for (int b = 0; b < blocks; b++) {
     const double t = b * block_ms;
     emu_millis = (uint32_t)t;
+    if (p.then_key) {
+      synth.accent = p.accent || (t >= p.switch_ms - 400 && t < p.switch_ms + 400);
+      if (synth_voice != p.then_key - 1 && t >= p.switch_ms) {
+        synth_voice = p.then_key - 1;
+        voice_apply();
+      }
+    }
     const int s = (int)(t / p.step_ms);
     if (s != step) {
       if (p.probe && step >= 0 && step < 8) {
@@ -308,6 +320,9 @@ int main(int argc, char** argv) {
     const int a = abs((int)v);
     if (a > peak) peak = a;
     if (v >= 32767 || v <= -32768) clipped++;
+  }
+  if (p.probe) {
+    fprintf(stderr, "audio blocks: most in use %d of 192\n", (int)AudioStream::memory_used_max);
   }
   printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%.2f,%.2f,%.3f,%d\n", p.voice, p.filter, p.resonance,
          p.release, p.detune, p.pw, p.accent, p.gate_ms, p.step_ms, loudness(out, false),
