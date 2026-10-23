@@ -190,7 +190,7 @@ static void process_key(const char k, const char state) {
           sequencer.set_length((key + 1) * Sequencer::STEPS_PER_PAGE);
         } else if (in_voice_mode() && !sequencer.is_running() &&
                    key < VOICE_COUNT) {
-          // Voice mode while stopped: keyboard key 1-9 picks the voice (see
+          // Voice mode while stopped: keyboard key 1-10 picks the voice (see
           // Synth.h). The key doesn't play a note. While playing, keys play
           // as normal and Up/Down change voice instead.
           combo_keys_held |= (1 << key);

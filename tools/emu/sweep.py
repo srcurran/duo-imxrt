@@ -5,7 +5,8 @@ Usage (from the repo root, after tools/emu/build.sh):
   python3 tools/emu/sweep.py            # full grid, summary table
   python3 tools/emu/sweep.py --quick    # mid knobs only
   python3 tools/emu/sweep.py --check    # exit 1 if a voice's median is more
-                                        # than 1.5 dB off Original, or any
+                                        # than 1.5 dB off its target (TARGET_DB,
+                                        # 0 = Original's level), or any
                                         # render clips more than 10 samples
 
 For each voice: the median, 10th and 90th percentile of its loudness minus
@@ -24,7 +25,11 @@ from concurrent.futures import ThreadPoolExecutor
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 EMU = os.path.join(HERE, "build", "emu")
-VOICES = ["Original", "Orchid", "Organ", "Strings", "Acid", "Pluck", "FM", "Fold", "Chord"]
+VOICES = ["Original", "Orchid", "Organ", "Strings", "Acid", "Pluck", "FM", "Fold", "Chord", "Funk"]
+# Expected speaker loudness vs Original, dB, for voices meant to sit above or
+# below Original (0 for any voice not listed). Funk had -4 before the sweep
+# covered octaves and short notes; across those it matches Original.
+TARGET_DB = {}
 FIELDS = ["voice", "filter", "resonance", "release", "detune", "pw", "accent", "gate_ms",
           "step_ms", "lufs", "lufs_spk", "peak", "clipped", "transpose"]
 
@@ -96,8 +101,9 @@ if "--check" in sys.argv:
     for v, name in enumerate(VOICES):
         mine = [r for r in rows if r["voice"] == str(v)]
         d = statistics.median(float(r["lufs_spk"]) - float(original[key(r)]["lufs_spk"]) for r in mine)
-        if abs(d) > 1.5:
-            problems.append(f"{name}: median {d:+.1f} dB vs Original")
+        target = TARGET_DB.get(name, 0.0)
+        if abs(d - target) > 1.5:
+            problems.append(f"{name}: median {d:+.1f} dB vs Original (target {target:+.1f})")
         worst = max(int(r["clipped"]) for r in mine)
         if worst > 10:
             problems.append(f"{name}: clips {worst} samples in one render")

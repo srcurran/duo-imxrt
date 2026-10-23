@@ -212,7 +212,7 @@ inline void audio_volume(int volume) {
 }
 
 // ---- Voices ----------------------------------------------------------------
-// Hold Accent and press keyboard key 1-9 (stopped) or Up/Down (globals.h).
+// Hold Accent and press keyboard key 1-10 (stopped) or Up/Down (globals.h).
 // Every voice runs through the same filter, envelopes, bitcrusher and delay,
 // so those knobs and buttons work the same everywhere. Detune and Pulse Width
 // are each voice's two "character" knobs:
@@ -228,6 +228,7 @@ inline void audio_volume(int volume) {
 //   8    Fold      interval                    second wave level
 //                  (and the Filter knob sets the fold amount)
 //   9    Chord     chord type                  4th note level
+//   10   Funk      filter snap (30-400 ms)     pulse width
 
 static const LushFx::Params ORGAN_LUSH = {0.55f, 0.75f, 0.25f, 6.7f, 0.35f, 7.3f, 0.25f, 0.9f};
 static const LushFx::Params STRINGS_LUSH = {0.5f, 0.85f, 0.35f, 0.6f, 3.0f, 5.8f, 0.3f, 0.85f};
@@ -270,6 +271,14 @@ static const float FOLD_MIN_AMOUNT = 0.2f;   // fold amount at Filter knob 0
 // their range higher stop here: above it the envelope pushes the filter
 // towards its unstable zone (~8.4 kHz).
 static const float FILTER_BASE_MAX = 541.0f;
+// Funk: a plucky square-wave synth bass, modelled on a KO II bass line
+// (2026-10-23 clip: odd harmonics, filter shut within ~80 ms, the level
+// fading over ~200 ms).
+static const float FUNK_LEVEL = 0.5f;          // pulse osc, like Original's
+static const float FUNK_SAW_LEVEL = 0.25f;     // a little saw adds the even
+                                               // harmonics the clip has
+static const float FUNK_AMP_SUSTAIN = 0.6f;    // level the pluck fades to
+static const int FUNK_AMP_DECAY_MS = 200;
 static const float FOLD_OUTPUT = 6800.0f;     // folder output peak: 16000, then
                                               // 11500; dB meter: still +2.7 vs Original
 
@@ -296,6 +305,8 @@ static const float VOICE_TRIM_DB[VOICE_COUNT] = {
     -7.0f,  // FM
     -5.5f,  // Fold
     -3.0f,  // Chord
+    0.0f,   // Funk     (on par with Original across the full sweep with
+            //           octaves and short notes: +0.7 dB on the speaker)
 };
 // The selected voice's mixer1 gains before the trim, and its fold trim.
 static float voice_mix[3] = {0.2f, 0.4f, 0.0f};
@@ -351,6 +362,8 @@ static void voice_reset() {
   lush_fx.enable(false);
   filter1.octaveControl(4);
   envelope1.attack(2);
+  envelope1.decay(0);
+  envelope1.sustain(1.0f);
   envelope2.attack(15);
   envelope2.decay(0);
   envelope2.sustain(1.0f);
@@ -437,6 +450,16 @@ void voice_apply() {
       envelope2.release(600);
       lush_fx.set(LushFx::ORCHID_PARAMS);
       lush_fx.enable(true);
+      break;
+    case VOICE_FUNK:
+      voice_gain(0, 0.4f);
+      filter1.octaveControl(4.5f);  // a deeper sweep from a lower floor
+      envelope1.attack(1);
+      envelope1.decay(FUNK_AMP_DECAY_MS);  // the level plucks, then fades
+      envelope1.sustain(FUNK_AMP_SUSTAIN);
+      envelope2.attack(1);
+      envelope2.sustain(0.0f);  // the filter snaps open, then shuts
+      envelope2.release(60);
       break;
     default:  // VOICE_ORIGINAL
       break;
@@ -574,6 +597,15 @@ static void voice_update_sources(const float note) {
       osc4.amplitude(pw * CHORD_NOTE_LEVEL);
       break;
     }
+    case VOICE_FUNK:
+      osc_saw.frequency(f0);
+      osc_saw.amplitude(FUNK_SAW_LEVEL);
+      osc_pulse.frequency(f0);
+      osc_pulse.amplitude(FUNK_LEVEL);
+      osc_pulse.pulseWidth(0.5f + 0.4f * pw);  // square to thin
+      // 30-400 ms on a curve, so noon (~120 ms) snaps like the KO II clip
+      envelope2.decay(30 + (int32_t)synth.detune * synth.detune * 370 / (1023 * 1023));
+      break;
     default:
       break;
   }
@@ -640,6 +672,12 @@ void synth_update() {
   if (voice == VOICE_FOLD) {
     filter1.frequency(250);  // the Filter knob folds instead
     envelope2.release(release_ms);  // the "gate" closes with the note
+  } else if (voice == VOICE_FUNK) {
+    // Half the stock range (60-315 Hz), so the filter closes down to the
+    // fundamental after each pluck; the envelope opens it ~4.5 octaves. The
+    // floor is 60 Hz (was 30): an octave down at Filter 0 it shut to a bare
+    // 17-58 Hz fundamental the speaker can't play.
+    filter1.frequency((synth.filter / 4) + 60);
   } else {
     // Pluck, FM and Chord play an octave above Original's fundamental: their
     // filter knob's range starts higher (x3, same top), or at the knob's low

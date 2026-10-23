@@ -137,7 +137,7 @@ Code: touch logic in `shared/duo/drum_pads.h` (pure C++, unit tested in
 
 ## Voices (branch `claude/duo-voice-orchid-style-972622`)
 - Owner's design, 2026-10-23: keep the original voice. Hold **Accent** ("boost" pad)
-  while **stopped** => voice mode: keyboard keys 1-9 pick the voice; key 1 = Original
+  while **stopped** => voice mode: keyboard keys 1-9 (now 1-10, see Funk) pick the voice; key 1 = Original
   (default at power-on). Like page mode, the keys don't play (key 10 still does) and it
   ends if Play starts. Random's page mode wins if both are held. LEDs: keys 1-9 lit,
   the selected one flashes. The choice is lost at power-off (the DUO saves nothing).
@@ -225,6 +225,27 @@ Code: touch logic in `shared/duo/drum_pads.h` (pure C++, unit tested in
   -5.5 dB. Now 0 near-silent cases, no voice >9 dB under Original anywhere, medians
   within 1.1 dB. The level sweep includes octaves (34992 renders, ~55 s); emu prints
   transpose as its last column.
+
+## Funk voice (branch `claude/ko2-funky-bassline-voice-07075a`, 2026-10-23)
+- Owner's request: a voice like the funky KO II bass line at the start of
+  youtube.com/shorts/DO63a4bfPqM (0:09-0:10). Analysed from the clip: a synth bass
+  (odd harmonics strong, some even), notes 55-87 Hz, the filter shut to the
+  fundamental within ~100 ms, the level ~-5 dB over 150 ms while held.
+- Voice 10 = **Funk**, on keyboard key 10 (VOICE_COUNT is now 10: every key picks a
+  voice in voice mode; Up/Down stops at 10). Pulse (0.5) + a little saw (0.25) an
+  octave down; amp: 1 ms attack, 200 ms decay to 0.6; filter env snaps open and
+  shuts (sustain 0). **Detune** = filter snap 30-400 ms on a curve (noon ~120 ms
+  matches the clip), **Pulse Width** = square to thin pulse. The Filter knob is
+  half the stock range (30-285 Hz) and octaveControl 4.5, so it closes down to the
+  fundamental. Stock resonance range, stock release.
+- Level: no trim. Speaker -4 dB vs Original, headphones +1.6 dB: the speaker barely
+  plays below ~270 Hz and any boost clips on Accent. `sweep.py` has `TARGET_DB`
+  (Funk: -4) for this (later dropped, see below). The tone test still covers voices 1-9.
+- Merged into main 2026-10-23 on top of the gate-knob swells and the octave/filter
+  fixes (it was written on 34438c6 and left uncommitted; committed as 20ebc13).
+  On merge: the -4 dB target was dropped (the full sweep with octaves and short notes
+  puts Funk at +0.7 dB, on par), and its filter floor went 30 -> 60 Hz (an octave down
+  at Filter 0 it shut to a bare 17-58 Hz fundamental: 2 near-silent cases, now 0).
 
 ## Mac emulator (tools/emu, 2026-10-23)
 - Runs the real firmware audio code on the Mac: Teensy audio objects, AudioStream.cpp,
