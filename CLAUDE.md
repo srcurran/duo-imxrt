@@ -271,9 +271,9 @@ Top picks: scales, pattern memory, punch-in effects.
 - Always flash builds from `main` (owner's decision 2026-10-22): it has Mod 1 (paging,
   rests), the rescue combo and the breathing LEDs (25% floor, cursor step in time with
   Play), perform mode, Mod 2 (drum pads) and the voices (Accent + keys / Up/Down).
-  Flashed 2026-10-23: main 34438c6 (voices merged with drum pads,
-  `restore/duo_main_34438c6.bin`); the USB label reads the commit before (d77e027-ish,
-  stamped at build time). Not yet checked hands-on as a whole.
+  Flashed 2026-10-23: main 5541b04 (voices + drum pads + the short-note/Organ/Pluck
+  fixes, `restore/duo_main_5541b04.bin`). Before it: 34438c6 (owner tried it: Organ
+  sharp, Strings silent on short notes, both fixed in 5541b04).
 - `variable-length` is the older Mod 1 branch (cursor step breathes opposite Play).
   `play-led-breathe` is cut from Dato's main: no Mod 1, no rescue combo. On 2026-10-21 a
   play-led-breathe build was flashed by mistake and Mod 1 disappeared.
