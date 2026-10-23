@@ -137,7 +137,16 @@ Full plan doc: https://claude.ai/code/artifact/c8336b8f-97ed-4703-bb62-ebb3c1ede
   64 KB (mostly AudioMemory). CPU not measured; estimated well under 10%.
 - Unit tests: `lush_fx_test`, `voice_fx_test` (pluck tuning/decay/ring length, fold,
   organ vibrato).
-- Mix levels and voice settings are first guesses, to tune by ear on the DUO.
+- Levels (2026-10-23): owner found 5 Acid, 6 Pluck, 7 FM (clipping) and 8 Fold loud,
+  1-4 fine, 9 Chord fine after a cut. Now set as constants at the top of the voice code
+  in Synth.h (FM_CARRIER_LEVEL, FM_MAX_DEPTH, CHORD_NOTE_LEVEL, ACID_LEVEL,
+  PLUCK_LEVEL, FOLD_OUTPUT). FM's "clipping" was likely too much FM depth (aliasing),
+  so its depth range is halved. `tools/voice_levels.py` simulates each voice and
+  prints A-weighted loudness vs Original (`uv run --with numpy --with scipy python
+  tools/voice_levels.py`). It tracks the owner's ears for FM/Fold/Chord but reads
+  Acid and Pluck quieter than they sound, so trust ears over it. Keep its settings in
+  step with Synth.h. Flashed 2026-10-23 (`restore/duo_voice-levels.bin`), not yet
+  checked by ear.
 - Variant on branch `claude/voice-mode-while-playing` (owner's request 2026-10-23, to
   try): Accent opens voice mode while playing too. While playing, Accent + keys 1-9
   switch voice instead of playing an accented live note (key 10 still plays); the

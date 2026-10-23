@@ -252,6 +252,17 @@ static const float CHORD_RATIOS[][3] = {
     {1.189207f, 1.498307f, 2.244924f},  // minor add 9
 };
 
+// Levels, matched to Original by ear on the DUO (2026-10-23) and by an
+// A-weighted loudness simulation. Original peaks at about 0.28 of full scale
+// into the filter (pulse 0.5 x 0.4 + saw 0.4 x 0.2).
+static const float FM_CARRIER_LEVEL = 0.26f;  // was 0.7, then 0.38: clipped
+static const float FM_MAX_DEPTH = 0.3f;       // modulator at full Pulse Width
+                                              // (was 0.6: harsh, aliasing)
+static const float CHORD_NOTE_LEVEL = 0.22f;  // was 0.5 per note
+static const float ACID_LEVEL = 0.57f;        // was 0.9 (-4 dB)
+static const float PLUCK_LEVEL = 0.6f;        // mixer1 ch 2, was 0.8 (-2.5 dB)
+static const float FOLD_OUTPUT = 11500.0f;    // folder output peak, was 16000 (-3 dB)
+
 // Picks one of `count` entries from a 0-1023 knob.
 static inline int knob_index(const int knob, const int count) {
   const int i = knob * count / 1024;
@@ -327,7 +338,7 @@ void voice_apply() {
       break;
     case VOICE_PLUCK:
       osc_pulse.amplitude(0.0f);
-      mixer1.gain(2, 0.8f);
+      mixer1.gain(2, PLUCK_LEVEL);
       envelope1.attack(1);
       pluck.enable(true);
       lush_fx.set(PLUCK_LUSH);
@@ -412,9 +423,9 @@ static void voice_update_sources(const float note) {
     }
     case VOICE_ACID:
       osc_pulse.frequency(f0);
-      osc_pulse.amplitude((1.0f - pw) * 0.9f);
+      osc_pulse.amplitude((1.0f - pw) * ACID_LEVEL);
       osc_saw.frequency(f0);
-      osc_saw.amplitude(pw * 0.9f);
+      osc_saw.amplitude(pw * ACID_LEVEL);
       envelope2.decay(80 + synth.detune * 900 / 1023);  // 80 ms to ~1 s
       break;
     case VOICE_PLUCK:
@@ -425,9 +436,9 @@ static void voice_update_sources(const float note) {
     case VOICE_FM:
       osc_saw.amplitude(0.0f);
       fm_carrier.frequency(note);
-      fm_carrier.amplitude(0.7f);
+      fm_carrier.amplitude(FM_CARRIER_LEVEL);
       fm_mod.frequency(note * FM_RATIOS[knob_index(synth.detune, 8)]);
-      fm_mod.amplitude(pw * 0.6f);
+      fm_mod.amplitude(pw * FM_MAX_DEPTH);
       break;
     case VOICE_FOLD:
       osc_pulse.frequency(f0);
@@ -435,17 +446,18 @@ static void voice_update_sources(const float note) {
       osc_saw.frequency(osc_saw_frequency);  // the stock detune interval
       osc_saw.amplitude(pw * 0.4f);
       fold_fx.amount(synth.filter / 1023.0f);
+      fold_fx.output_level(FOLD_OUTPUT);
       break;
     case VOICE_CHORD: {
       const float* r = CHORD_RATIOS[knob_index(synth.detune, 8)];
       osc_pulse.frequency(note);
-      osc_pulse.amplitude(0.5f);
+      osc_pulse.amplitude(CHORD_NOTE_LEVEL);
       osc_saw.frequency(note * r[0]);
-      osc_saw.amplitude(0.5f);
+      osc_saw.amplitude(CHORD_NOTE_LEVEL);
       osc3.frequency(note * r[1]);
-      osc3.amplitude(0.5f);
+      osc3.amplitude(CHORD_NOTE_LEVEL);
       osc4.frequency(note * r[2]);
-      osc4.amplitude(pw * 0.5f);
+      osc4.amplitude(pw * CHORD_NOTE_LEVEL);
       break;
     }
     default:
