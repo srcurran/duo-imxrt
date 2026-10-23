@@ -259,11 +259,17 @@ static const float CHORD_RATIOS[][3] = {
 // A-weighted loudness simulation. Original peaks at about 0.28 of full scale
 // into the filter (pulse 0.5 x 0.4 + saw 0.4 x 0.2).
 static const float FM_CARRIER_LEVEL = 0.26f;  // was 0.7, then 0.38: clipped
-static const float FM_MAX_DEPTH = 0.3f;       // modulator at full Pulse Width
+static const float FM_MAX_DEPTH = 0.3f;
+static const float FM_MIN_DEPTH = 0.06f;      // at Pulse Width 0       // modulator at full Pulse Width
                                               // (was 0.6: harsh, aliasing)
 static const float CHORD_NOTE_LEVEL = 0.22f;  // was 0.5 per note
 static const float ACID_LEVEL = 0.57f;        // was 0.9 (-4 dB)
 static const float PLUCK_LEVEL = 0.6f;        // mixer1 ch 2, was 0.8 (-2.5 dB)
+static const float FOLD_MIN_AMOUNT = 0.2f;   // fold amount at Filter knob 0
+// The filter knob's top base frequency (1023/2 + 30 Hz). Voices that start
+// their range higher stop here: above it the envelope pushes the filter
+// towards its unstable zone (~8.4 kHz).
+static const float FILTER_BASE_MAX = 541.0f;
 static const float FOLD_OUTPUT = 6800.0f;     // folder output peak: 16000, then
                                               // 11500; dB meter: still +2.7 vs Original
 
@@ -284,9 +290,9 @@ static const float VOICE_TRIM_DB[VOICE_COUNT] = {
     -7.5f,  // Organ
     -5.0f,  // Strings
     -4.5f,  // Acid
-    -4.0f,  // Pluck    (rings on whatever the note length, so it read loud
-            //           once very short notes joined the sweep; also clears
-            //           its last clipped samples)
+    -5.5f,  // Pluck    (rings on whatever the note length, so it read loud
+            //           once very short notes joined the sweep; -1.5 more
+            //           after its filter range started higher)
     -7.0f,  // FM
     -5.5f,  // Fold
     -3.0f,  // Chord
@@ -364,9 +370,11 @@ void voice_apply() {
       lush_fx.enable(true);
       break;
     case VOICE_ORGAN:
-      osc_pulse.begin(WAVEFORM_SINE);
+      // Triangles for the two main tones: a few soft overtones. Pure sines
+      // sounded whistly and piercing on the speaker (owner, 2026-10-23).
+      osc_pulse.begin(WAVEFORM_TRIANGLE);
       osc_saw.begin(WAVEFORM_SINE);
-      osc3.begin(WAVEFORM_SINE);
+      osc3.begin(WAVEFORM_TRIANGLE);
       osc4.begin(WAVEFORM_SINE);
       voice_gain(0, 0.4f);
       voice_gain(2, 0.4f);
@@ -502,11 +510,14 @@ static void voice_update_sources(const float note) {
       osc_pulse.frequency(f0);  // 8' fundamental
       osc_pulse.amplitude(0.6f);
       osc3.frequency(note);  // 4' octave
-      osc3.amplitude(0.35f);
+      osc3.amplitude(0.45f);
       osc4.frequency(f0 * 3.0f);  // 2 2/3' quint (sets the heard pitch)
-      osc4.amplitude(0.25f);
+      osc4.amplitude(0.3f);
+      // Upper drawbar: never fully off (pure low sines vanish on the speaker
+      // an octave down) and at most 0.3 (was 0.5: a loud high sine sounded
+      // harsh and piercing on the speaker).
       osc_saw.frequency(f0 * ORGAN_DRAWBARS[knob_index(synth.detune, 4)]);
-      osc_saw.amplitude(pw * 0.5f);
+      osc_saw.amplitude(0.08f + pw * 0.22f);
       break;
     case VOICE_STRINGS: {
       const float spread = 0.002f + 0.013f * dt;  // up to ~25 cents
@@ -537,14 +548,18 @@ static void voice_update_sources(const float note) {
       fm_carrier.frequency(note);
       fm_carrier.amplitude(FM_CARRIER_LEVEL);
       fm_mod.frequency(note * FM_RATIOS[knob_index(synth.detune, 8)]);
-      fm_mod.amplitude(pw * FM_MAX_DEPTH);
+      // A little FM always: with none it's a pure sine, and an octave down
+      // that's below what the speaker plays.
+      fm_mod.amplitude(FM_MIN_DEPTH + pw * (FM_MAX_DEPTH - FM_MIN_DEPTH));
       break;
     case VOICE_FOLD:
       osc_pulse.frequency(f0);
       osc_pulse.amplitude(0.8f);
       osc_saw.frequency(osc_saw_frequency);  // the stock detune interval
       osc_saw.amplitude(pw * 0.4f);
-      fold_fx.amount(synth.filter / 1023.0f);
+      // Always a little folding: at 0 the soft triangle has almost no
+      // overtones, and an octave down it was below what the speaker plays.
+      fold_fx.amount(FOLD_MIN_AMOUNT + (1.0f - FOLD_MIN_AMOUNT) * synth.filter / 1023.0f);
       fold_fx.output_level(FOLD_OUTPUT * fold_trim);
       break;
     case VOICE_CHORD: {
@@ -626,7 +641,15 @@ void synth_update() {
     filter1.frequency(250);  // the Filter knob folds instead
     envelope2.release(release_ms);  // the "gate" closes with the note
   } else {
-    filter1.frequency((synth.filter/2)+30);
+    // Pluck, FM and Chord play an octave above Original's fundamental: their
+    // filter knob's range starts higher (x3, same top), or at the knob's low
+    // end the filter cut their notes away and they went silent (worst an
+    // octave up with the shortest notes).
+    float filter_base = (synth.filter/2)+30;
+    if (voice == VOICE_PLUCK || voice == VOICE_FM || voice == VOICE_CHORD) {
+      filter_base = filter_base * 3 < FILTER_BASE_MAX ? filter_base * 3 : FILTER_BASE_MAX;
+    }
+    filter1.frequency(filter_base);
   }
   filter1.resonance(filter_resonance);
 

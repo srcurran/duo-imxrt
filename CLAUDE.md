@@ -211,6 +211,21 @@ Code: touch logic in `shared/duo/drum_pads.h` (pure C++, unit tested in
   now within ~1-3.5 dB of Original at 10-60 ms notes; the sweep includes 10 ms notes
   (11664 renders); emu sets synth.gateLength from gate_ms.
 
+- No silent spots (2026-10-23, branch `claude/voice-normalize-octaves`, from the
+  owner's long video of all voices across octaves and filter settings). An emulator
+  hunt over voices x octave (-12/0/+12) x filter x resonance x Detune/PW x 10/60 ms notes
+  found 77 near-silent cases, all at Filter knob 0: Pluck/FM/Chord play an octave above
+  Original and the low filter cut them; Fold at fold amount 0 (a soft triangle) and
+  FM/Organ with low PW (near-pure sines) vanished an octave down below the speaker's
+  range. Fixes: Pluck/FM/Chord filter base x3 (capped at the stock top, 541 Hz,
+  FILTER_BASE_MAX); Fold minimum fold 0.2 (FOLD_MIN_AMOUNT); FM minimum depth 0.06
+  (FM_MIN_DEPTH); Organ upper drawbar 0.08-0.3 (was 0-0.5; also less piercing),
+  octave 0.45, quint 0.3, and triangles for the 8' and 4' (pure sines sounded whistly
+  and piercing; Organ still has the least 1-4 kHz energy of any voice). Pluck trim
+  -5.5 dB. Now 0 near-silent cases, no voice >9 dB under Original anywhere, medians
+  within 1.1 dB. The level sweep includes octaves (34992 renders, ~55 s); emu prints
+  transpose as its last column.
+
 ## Mac emulator (tools/emu, 2026-10-23)
 - Runs the real firmware audio code on the Mac: Teensy audio objects, AudioStream.cpp,
   Synth.h, Pitch.h, globals.h, seq.cpp. `tools/emu/shim/host_platform.h` replaces the
