@@ -31,7 +31,8 @@ Full plan doc: https://claude.ai/code/artifact/c8336b8f-97ed-4703-bb62-ebb3c1ede
   commit, so it reads one commit behind. Compare the .bin files to check what's flashed.
 - Firmware images in `restore/` (committed): `restore/duo-imxrt_resistive_2.4.0.bin`
   (official, sha256 75d2894c...), `restore/duo_variable-length_685a4e6.bin` and
-  `restore/duo_main_bf912e4.bin` (the build now on the DUO, sha256 c9adeaea...).
+  `restore/duo_main_bf912e4.bin` (sha256 c9adeaea...) and
+  `restore/duo_drum-pads_e762bdb.bin` (the build now on the DUO, sha256 2aebe678...).
   Before this mod the DUO ran Dato main @ ed8a5eaf, board DUO_BRAINS_2.3.
 - Test sequencer logic with the unit tests before building:
   `cd shared/duo/test && ./run_tests.sh`
@@ -108,18 +109,31 @@ Full plan doc: https://claude.ai/code/artifact/c8336b8f-97ed-4703-bb62-ebb3c1ede
 - Flashed 2026-10-23 (bd19148, .bin sha256 1aee3389...), replacing main bf912e4. Owner
   checked it hands-on the same day: works as desired. Merged into `main`. To go back: reflash `restore/duo_main_bf912e4.bin`.
 
-## Mod 2: drum pads (planned)
-Code: `brains2/apps/duo/duo-firmware/src/DrumSynth.h`, `brains2/apps/duo/boards/*/drums.h`.
-- Timing: pads are polled only every ~11 ms (`millis() - update_time > 10`). Poll every
-  loop, and use asymmetric debounce: fire on first contact, then ignore the pad briefly.
-  Retrigger on a new zone touch, and let the hat ring out its decay instead of cutting
-  on release.
-- Sound: the kick is a plain `AudioSynthSimpleDrum` sine. Add a click transient, a
-  two-stage pitch drop and saturation. Add a real snare and an open hat.
-- Hold to repeat: a held pad retriggers on the sequencer grid (`TICKS_PER_STEP`; the clock
-  runs even when stopped). The first hit is immediate; a tap stays a single hit.
-- Later: shape drums with the knobs while a pad is held, drum kits, record pad hits into
-  the sequencer, send drums over MIDI.
+## Mod 2: drum pads (done, branch `drum-pads`, flashed 2026-10-23)
+Code: touch logic in `shared/duo/drum_pads.h` (pure C++, unit tested in
+`test/firmware/drum_pads_test.cpp`); reading in `brains2/apps/duo/boards/DUO_BRAINS_2.3/drums.h`
+(2.1 is a copy); sounds stay in `duo-firmware/src/DrumSynth.h`.
+- Sounds: stock DUO kick and hat (owner's call). Each pad's left/middle/right plays the
+  stock tone variation (velocity 0/63-64/127). A six-drum synth (kick/tom/snare,
+  closed hat/clap/open hat, commit 74d3f68) was tried and dropped: too boomy.
+- Pads are read one contact every ~330 us (each pad fully every ~2 ms; stock: 11 ms).
+- Zones: left and left+middle => left; middle alone => middle; middle+right and right =>
+  right. The zone must hold 6 ms (`SETTLE_MS`) before it plays, so a finger landing on two
+  contacts plays one drum. A contact counts as lifted after 25 ms off (`RELEASE_MS`).
+- Sliding into a new zone plays it. Once the middle has played, the finger must leave the
+  middle contact to reach an edge (a finger on the middle brushes its neighbours).
+- One finger at a time (owner's choice): a second finger on the far edge plays that edge;
+  lifting a finger never plays. Thumb on an edge + finger on the middle plays nothing (the
+  pad can't tell that from one finger on 1+2).
+- Hold to repeat: held for 150 ms, the pad repeats on every sequencer step (clock runs
+  when stopped; `Sequencer::ticks_per_step()`). A resting finger repeats too (accepted).
+- Hat rings out its short decay on release instead of being cut. Kick still ducks the
+  pulse osc while the kick pad is held (stock "sidechain").
+- Pressure/impact: the pads sit on mux SYN_MUX2 on GPIO_AD_03 = ADC1 ch 3, so an analog
+  level is readable, but it reflects skin contact, not strike speed. Owner skipped it.
+- Owner checked it hands-on 2026-10-23 (e762bdb): works as desired. Merged into `main`.
+- Later: shape drums with the knobs while a pad is held, record pad hits into the
+  sequencer, send drums over MIDI.
 
 ## Feature backlog (from other small synths)
 Scales/root (keys are fixed to `SCALE[]` = black-key pentatonic in `globals.h`),
@@ -131,8 +145,8 @@ Top picks: scales, pattern memory, punch-in effects.
 ## Which build to flash
 - Always flash builds from `main` (owner's decision 2026-10-22): it has Mod 1 (paging,
   rests), the rescue combo and the breathing LEDs (25% floor, cursor step in time with
-  Play). Flashed 2026-10-22 (bf912e4); owner checked it hands-on the same day and
-  everything works as expected.
+  Play), perform mode and Mod 2 (drum pads). Last flashed 2026-10-23 (drum-pads
+  e762bdb, merged into main the same day); owner checked it hands-on.
 - `variable-length` is the older Mod 1 branch (cursor step breathes opposite Play).
   `play-led-breathe` is cut from Dato's main: no Mod 1, no rescue combo. On 2026-10-21 a
   play-led-breathe build was flashed by mistake and Mod 1 disappeared.

@@ -192,6 +192,10 @@ void Sequencer::align_clock() {
   }
 }
 
+uint8_t Sequencer::ticks_per_step() const {
+  return divider_from_speed_mod(speed_mod);
+}
+
 void Sequencer::tick_clock() {
   clock++;
 

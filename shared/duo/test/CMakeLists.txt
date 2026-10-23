@@ -28,6 +28,12 @@ add_test(
   NAME sequencer_test
   COMMAND $<TARGET_FILE:sequencer_test>)
 
+add_executable(drum_pads_test
+  ${CMAKE_CURRENT_LIST_DIR}/firmware/drum_pads_test.cpp
+)
+target_link_libraries(drum_pads_test PRIVATE unity_framework firmware)
+add_test(NAME drum_pads_test COMMAND $<TARGET_FILE:drum_pads_test>)
+
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Os -Wall -Wpedantic -Werror -std=gnu99" CACHE INTERNAL "c compiler flags release")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Os -Wall -Wpedantic -Werror -std=c++11 -Wpedantic" CACHE INTERNAL "cxx compiler flags release")
 
