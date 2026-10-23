@@ -14,7 +14,6 @@
 #include <synth_whitenoise.h>
 #include <synth_pinknoise.h>
 #include <synth_simple_drum.h>
-#include "synth_drum_kit.h"
 
 // GUItool: begin automatically generated code
 AudioSynthWaveform       osc_pulse;      //xy=78.10000610351562,97
@@ -34,8 +33,13 @@ AudioMixer4              mixer_delay;     //xy=728.0999755859375,279.10000610351
 AudioMixer4              mixer_output;         //xy=861.1000061035156,100
 AudioEffectFade          pop_suppressor;          //xy=1062,292
 AudioAnalyzePeak         peak2;          //xy=987.1000061035156,151
-// Drums: output 0 = kick pad (kick/tom/snare), 1 = hat pad (closed hat/clap/open hat)
-AudioSynthDrumKit        drum_kit;
+AudioSynthNoiseWhite     hat_noise1;
+AudioSynthSimpleDrum     kick_drum1;
+AudioEffectCustomEnvelope hat_envelope1;
+AudioSynthSimpleDrum     hat_snappy;
+AudioFilterStateVariable hat_filter_bp;
+AudioFilterStateVariable hat_filter_hp;
+AudioMixer4              hat_mixer;
 AudioConnection          patchCord1(osc_pulse, 0, mixer1, 1);
 AudioConnection          patchCord2(osc_saw, 0, mixer1, 0);
 AudioConnection          patchCord3(dc1, envelope2);
@@ -59,9 +63,14 @@ AudioConnection          patchCord15(bitcrusher1, 0, delay_envelope, 0);
 AudioConnection          patchCord16(delay_envelope, 0, mixer_delay, 0);
 // AudioConnection          patchCord13(mixer_delay, delay1);
 
-AudioConnection          patchCord26(drum_kit, 1, mixer_delay, 3);
-AudioConnection          patchCord27(drum_kit, 0, mixer_output, 2);
-AudioConnection          patchCord28(drum_kit, 1, mixer_output, 3);
+AudioConnection          patchCord21(hat_noise1, hat_envelope1);
+AudioConnection          patchCord22(hat_envelope1, 0, hat_filter_hp, 0);
+AudioConnection          patchCord23(hat_filter_hp, 2, hat_filter_bp, 0);
+AudioConnection          patchCord24(hat_filter_bp, 1, hat_mixer, 0);
+AudioConnection          patchCord25(hat_snappy, 0, hat_mixer, 1);
+AudioConnection          patchCord26(hat_mixer, 0, mixer_delay, 3);
+AudioConnection          patchCord27(kick_drum1, 0, mixer_output, 2);
+AudioConnection          patchCord28(hat_mixer, 0, mixer_output, 3);
 AudioConnection          patchCord29(mixer_output, pop_suppressor);
 AudioConnection          patchCord30(mixer_output, peak2);
 // GUItool: end automatically generated code

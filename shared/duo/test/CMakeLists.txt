@@ -13,7 +13,6 @@ target_include_directories(unity_framework PUBLIC
 
 add_library(firmware
   ${CMAKE_CURRENT_LIST_DIR}/../seq.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/../drum_kit.cpp
 )
 
 target_include_directories(firmware PUBLIC
@@ -34,19 +33,6 @@ add_executable(drum_pads_test
 )
 target_link_libraries(drum_pads_test PRIVATE unity_framework firmware)
 add_test(NAME drum_pads_test COMMAND $<TARGET_FILE:drum_pads_test>)
-
-add_executable(drum_kit_test
-  ${CMAKE_CURRENT_LIST_DIR}/firmware/drum_kit_test.cpp
-)
-target_link_libraries(drum_kit_test PRIVATE unity_framework firmware)
-add_test(NAME drum_kit_test COMMAND $<TARGET_FILE:drum_kit_test>)
-
-# Not a test: writes each drum to a .wav file to listen to on a computer.
-# Run: build/render_drums <output folder>
-add_executable(render_drums
-  ${CMAKE_CURRENT_LIST_DIR}/firmware/render_drums.cpp
-)
-target_link_libraries(render_drums PRIVATE firmware)
 
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Os -Wall -Wpedantic -Werror -std=gnu99" CACHE INTERNAL "c compiler flags release")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Os -Wall -Wpedantic -Werror -std=c++11 -Wpedantic" CACHE INTERNAL "cxx compiler flags release")

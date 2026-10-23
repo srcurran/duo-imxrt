@@ -5,15 +5,16 @@
 #include "shared/duo/drum_pads.h"
 
 // Resistive drum pads: three contacts each (left, middle, right).
-//   Kick pad: kick / tom / snare
-//   Hat pad:  closed hat / clap / open hat
-// Touch logic (instant hits, slide = new hit, hold = repeat on the step grid)
+// Stock DUO kick and hat sounds; each zone plays the stock tone variation
+// (left: low/long kick, plain hat; right: high/short kick, snappy hat).
+// Touch logic (zones, slide = new hit, hold = repeat on the step grid)
 // is in shared/duo/drum_pads.h.
 
 namespace Drums {
 
-static const DrumKit::Drum KICK_PAD_DRUMS[3] = {DrumKit::Kick, DrumKit::Tom, DrumKit::Snare};
-static const DrumKit::Drum HAT_PAD_DRUMS[3] = {DrumKit::ClosedHat, DrumKit::Clap, DrumKit::OpenHat};
+// Stock velocities for the left / middle / right contacts.
+static const uint8_t KICK_ZONE_VELOCITY[3] = {0, 63, 127};
+static const uint8_t HAT_ZONE_VELOCITY[3] = {0, 64, 127};
 
 // Contacts are read one at a time, spread out, so no single loop pass stalls.
 // Six contacts at this spacing: each pad is fully read every ~2 ms.
@@ -65,15 +66,15 @@ void update() {
 
   const DrumPads::Zone hat = hat_pad.update(contacts[0], contacts[1], contacts[2], now, step_tick);
   if (hat != DrumPads::NoZone) {
-    drum_hit(HAT_PAD_DRUMS[hat]);
+    hat_noteon(HAT_ZONE_VELOCITY[hat]); // the hat rings out its short decay
   }
 
   const DrumPads::Zone kick = kick_pad.update(contacts[3], contacts[4], contacts[5], now, step_tick);
   if (kick != DrumPads::NoZone) {
-    drum_hit(KICK_PAD_DRUMS[kick]);
+    kick_noteon(KICK_ZONE_VELOCITY[kick]);
   }
   if (kick_pad_was_held && !kick_pad.held()) {
-    drum_kick_pad_released();
+    kick_noteoff(); // undo the sidechain duck on the pulse osc
   }
   kick_pad_was_held = kick_pad.held();
 }
