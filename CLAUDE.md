@@ -108,7 +108,7 @@ Full plan doc: https://claude.ai/code/artifact/c8336b8f-97ed-4703-bb62-ebb3c1ede
 - Flashed 2026-10-23 (bd19148, .bin sha256 1aee3389...), replacing main bf912e4. Owner
   checked it hands-on the same day: works as desired. Merged into `main`. To go back: reflash `restore/duo_main_bf912e4.bin`.
 
-## Voices (branch `claude/duo-voice-orchid-style-972622`, built 2026-10-23, not flashed yet)
+## Voices (branch `claude/duo-voice-orchid-style-972622`, flashed 2026-10-23)
 - Owner's design, 2026-10-23: keep the original voice. Hold **Accent** ("boost" pad)
   while **stopped** => voice mode: keyboard key 1 = Original (default at power-on),
   key 2 = Orchid. Like page mode, the keys don't play and it ends if Play starts.
@@ -124,6 +124,10 @@ Full plan doc: https://claude.ai/code/artifact/c8336b8f-97ed-4703-bb62-ebb3c1ede
   (`LinearEnvelope::calcRate`), so keep attack/release under that.
 - Reverb runs at 22.05 kHz to save RAM. DTCM (m_data) now 22 KB of 32 KB.
 - Unit tests: `lush_fx_test` (silence, tail, decay, no wrap at full scale, reset).
+- Flashed 2026-10-23 (540b6bb, .bin sha256 98f0e5e5..., saved as
+  `restore/duo_voices_540b6bb.bin`). Not yet checked hands-on. It replaced a
+  `drum-pads` dev build (74d3f68 plus uncommitted edits, from another session),
+  so drum pads aren't on the DUO now. Both branches start from main 46d1fcc.
 - Mix levels (`DRY_MIX`, `CHORUS_MIX`, `REVERB_MIX`, `OUTPUT_GAIN`) are first
   guesses, to tune by ear on the DUO.
 
