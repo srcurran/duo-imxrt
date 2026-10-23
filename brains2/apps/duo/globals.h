@@ -26,7 +26,7 @@ uint8_t osc_pulse_midi_note = 0;
 int transpose = 0;
 bool random_flag = 0;
 // Page mode: Random (BTN_SEQ1) pressed and held while the sequencer is
-// stopped. Keys 1-4 set the length, Up/Down change page, and step buttons
+// stopped. Keys 1-8 set the length, Up/Down change page, and step buttons
 // move the cursor. While running, Random works as normal and this stays off.
 bool page_mode_held = false;
 // Keyboard keys (bit per key) pressed as part of a length combo. Their release

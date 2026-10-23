@@ -135,7 +135,7 @@ uint8_t breathe_brightness(const uint16_t phase_offset) {
 
 // Updates the LED colour and brightness to match the stored sequence
 void led_update() {
-  // In page mode the keyboard shows the length as a meter: keys 1-4 light up
+  // In page mode the keyboard shows the length as a meter: keys 1-8 light up
   // one per 8 steps (in their own colours), all other keys go dark.
   // In voice mode the voice keys light up, the selected one flashes.
   const bool page_mode = in_page_mode();
@@ -149,7 +149,7 @@ void led_update() {
     }
   }
 
-  // Page indicator on keyboard key 1-4 (steps 1-8, 9-16, ...):
+  // Page indicator on keyboard key 1-8 (steps 1-8, 9-16, ... 57-64):
   // - page mode: the key of the page being viewed flashes.
   // - otherwise, with more than 8 steps: the key of the playing page is off.
   const uint8_t page_led = sequencer.cur_page() + 9;

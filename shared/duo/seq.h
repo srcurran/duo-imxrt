@@ -10,7 +10,7 @@ static const unsigned INITIAL_VELOCITY = 100;
 static const uint8_t NUM_STEPS = 8;
 static const uint8_t STEPS_PER_PAGE = NUM_STEPS;
 // Longest supported sequence (4 pages of 8 steps).
-static const uint8_t MAX_STEPS = 32;
+static const uint8_t MAX_STEPS = 64;  // 8 pages (owner, 2026-10-23; was 32)
 static const unsigned PULSES_PER_QUARTER_NOTE = 24;
 static const unsigned TICKS_PER_STEP = (PULSES_PER_QUARTER_NOTE / 2);
 
