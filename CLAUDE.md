@@ -147,12 +147,17 @@ Full plan doc: https://claude.ai/code/artifact/c8336b8f-97ed-4703-bb62-ebb3c1ede
   Acid and Pluck quieter than they sound, so trust ears over it. Keep its settings in
   step with Synth.h. Flashed 2026-10-23 (`restore/duo_voice-levels.bin`), not yet
   checked by ear.
-- Variant on branch `claude/voice-mode-while-playing` (owner's request 2026-10-23, to
-  try): Accent opens voice mode while playing too. While playing, Accent + keys 1-9
-  switch voice instead of playing an accented live note (key 10 still plays); the
-  sequence's accent boost still applies while Accent is held. Flashed 2026-10-23
-  (31505ac, `restore/duo_voice-while-playing_31505ac.bin`, sha256 d9093453...); not yet
-  checked hands-on. No drum pads in it (not merged with main yet).
+- Branch `claude/voice-mode-while-playing` (owner's design 2026-10-23, after trying
+  keys-switch-while-playing): **stopped**: Accent + key 1-9 picks the voice.
+  **Playing**: keys play as normal (accented, stock); Accent + Up/Down = next/previous
+  voice (also works stopped), stopping at voice 1 / 9, no wrap. While Accent is held
+  the keyboard LEDs show the voice keys (selected flashes), also while playing.
+  Flashed 2026-10-23 (`restore/duo_voice-updown.bin`), not yet checked hands-on.
+- Owner's dB-meter test 2026-10-23 (NIOSH SLM, LAeq per voice, same sequence) vs
+  Original: Orchid -9, Organ -8, Strings -3.5, Acid -8, Pluck -10, FM -2, Fold +2.7,
+  Chord -3. Owner only found Fold loud by ear, so Fold cut 4.5 dB (FOLD_OUTPUT 6800,
+  b3dbfdd); the others left alone. A-weighting under-reads bass (Organ, Acid) and
+  short sequenced notes never reach Orchid's slow attack, so trust ears over it.
 - Flashed 2026-10-23: 540b6bb (Original + Orchid only, `restore/duo_voices_540b6bb.bin`),
   then 999d0ce (all nine voices, `restore/duo_voices_999d0ce.bin`, sha256 9c0d012c...).
   Not yet checked hands-on. Each flash replaced a drum-pads build from another

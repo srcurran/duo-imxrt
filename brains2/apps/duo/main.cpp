@@ -185,9 +185,11 @@ static void process_key(const char k, const char state) {
           // steps. The key doesn't play a note.
           combo_keys_held |= (1 << key);
           sequencer.set_length((key + 1) * Sequencer::STEPS_PER_PAGE);
-        } else if (in_voice_mode() && key < VOICE_COUNT) {
-          // Voice mode: keyboard key 1-9 picks the voice (see Synth.h).
-          // The key doesn't play a note.
+        } else if (in_voice_mode() && !sequencer.is_running() &&
+                   key < VOICE_COUNT) {
+          // Voice mode while stopped: keyboard key 1-9 picks the voice (see
+          // Synth.h). The key doesn't play a note. While playing, keys play
+          // as normal and Up/Down change voice instead.
           combo_keys_held |= (1 << key);
           synth_voice = key;
           voice_apply();
@@ -219,6 +221,12 @@ static void process_key(const char k, const char state) {
           if (sequencer.cur_page() > 0) {
             sequencer.set_page(sequencer.cur_page() - 1);
           }
+        } else if (in_voice_mode()) {
+          // Accent + Down: previous voice. Stops at voice 1 (no wrap).
+          if (synth_voice > 0) {
+            synth_voice--;
+            voice_apply();
+          }
         } else {
           transpose--;
           if (transpose < -12) {
@@ -231,6 +239,12 @@ static void process_key(const char k, const char state) {
           // (doesn't wrap round to page 1).
           if (sequencer.cur_page() + 1 < sequencer.page_count()) {
             sequencer.set_page(sequencer.cur_page() + 1);
+          }
+        } else if (in_voice_mode()) {
+          // Accent + Up: next voice. Stops at the last voice (no wrap).
+          if (synth_voice + 1 < VOICE_COUNT) {
+            synth_voice++;
+            voice_apply();
           }
         } else {
           transpose++;
