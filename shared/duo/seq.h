@@ -141,6 +141,9 @@ struct Sequencer {
 
   void advance();
   void tick_clock();
+  // Clock ticks per step at the current speed (the clock runs even when
+  // stopped, so this also gives a step grid while stopped).
+  uint8_t ticks_per_step() const;
   void update_gate(uint32_t delta_micros);
   void align_clock();
   inline void hold_note(uint8_t note) {

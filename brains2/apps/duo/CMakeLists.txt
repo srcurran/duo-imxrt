@@ -13,6 +13,7 @@ add_executable(${EXECUTABLE_NAME}
     ${CMAKE_CURRENT_SOURCE_DIR}/../../core/adapters/fast_led/FastLED.cpp
     ${CMAKE_CURRENT_LIST_DIR}/../../../shared/duo/effect_custom_envelope.cpp
     ${CMAKE_CURRENT_LIST_DIR}/../../../shared/duo/seq.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/../../../shared/duo/drum_kit.cpp
 )
 
 target_include_directories(${EXECUTABLE_NAME} PRIVATE

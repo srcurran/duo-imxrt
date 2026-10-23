@@ -368,7 +368,7 @@ static void main_loop(){
         MIDI::read(MIDI_CHANNEL);
         pitch_update(); // ~30us
         synth_update(); // ~ 100us
-        Drums::update(); // ~ 700us
+        Drums::update(); // reads one pad contact every ~330us (~50us each)
         sequencer_update();
         headphone_jack_check();
         pots_read();
