@@ -6,7 +6,10 @@
 //        key=1..9 picks the voice by keyboard key, voice=0..8 by number)
 // Prints one CSV line: the settings, then
 //   lufs      integrated loudness (ITU-R BS.1770 K-weighting, no gating)
-//   lufs_spk  the same after a 150 Hz high-pass (a small speaker's bass loss)
+//   lufs_spk  the same through a model of the DUO's speaker, measured with the
+//             tone test on 2026-10-23: 6th-order high-pass at 270 Hz (almost no
+//             bass), 4th-order low-pass at 6.5 kHz. Narrow dips from the room and
+//             phone position (700 Hz, 1.5 kHz, 3 kHz) are left out.
 //   peak      highest output sample, 0..1 (1 = full scale)
 //   clipped   output samples at full scale
 // wav=path also writes the output as a mono 16-bit WAV.
@@ -90,6 +93,13 @@ class AudioSink : public AudioStream {
   audio_block_t* queue[1];
 };
 
+// Debugging probes (probe=1): peak level after the voice sources, the
+// filter and the amp envelope, printed per note.
+static AudioAnalyzePeak probe_src, probe_filter, probe_env;
+static AudioConnection probe1(voice_mixer, 0, probe_src, 0);
+static AudioConnection probe2(filter1, 0, probe_filter, 0);
+static AudioConnection probe3(envelope1, 0, probe_env, 0);
+
 static AudioAmplifier speaker_preamp;
 static AudioSink sink;
 static AudioConnection out1(pop_suppressor, 0, speaker_preamp, 0);
@@ -108,6 +118,8 @@ struct Params {
   std::string notes = "49,54,58,63,68,70,63,54";  // keyboard keys 1,3,5,6,9,10,6,3
   std::string wav;
   int test = 0;
+  int nolush = 0;  // debugging: bypass the chorus/reverb
+  int probe = 0;   // debugging: print stage peaks per note
 };
 
 static void write_wav(const std::string& path, const std::vector<int16_t>& s) {
@@ -137,6 +149,10 @@ static Biquad highpass(double fc, double q) {
   const double w = 2 * M_PI * fc / 44100, c = cos(w), al = sin(w) / (2 * q), a0 = 1 + al;
   return Biquad{(1 + c) / 2 / a0, -(1 + c) / a0, (1 + c) / 2 / a0, -2 * c / a0, (1 - al) / a0};
 }
+static Biquad lowpass(double fc, double q) {
+  const double w = 2 * M_PI * fc / 44100, c = cos(w), al = sin(w) / (2 * q), a0 = 1 + al;
+  return Biquad{(1 - c) / 2 / a0, (1 - c) / a0, (1 - c) / 2 / a0, -2 * c / a0, (1 - al) / a0};
+}
 static Biquad high_shelf(double fc, double gain_db, double q) {
   const double A = pow(10, gain_db / 40), w = 2 * M_PI * fc / 44100, c = cos(w);
   const double al = sin(w) / (2 * q), sa = 2 * sqrt(A) * al;
@@ -150,12 +166,16 @@ static Biquad high_shelf(double fc, double gain_db, double q) {
 // speaker-like high-pass. Skips the first 0.25 s.
 static double loudness(const std::vector<int16_t>& s, bool speaker) {
   Biquad shelf = high_shelf(1500, 4.0, 1 / sqrt(2.0)), rlb = highpass(38, 0.5);
-  Biquad spk1 = highpass(150, 0.707), spk2 = highpass(150, 0.707);
+  // Speaker: Butterworth sections (6th-order high-pass, 4th-order low-pass).
+  Biquad spk[5] = {highpass(270, 0.5176), highpass(270, 0.7071), highpass(270, 1.9319),
+                   lowpass(6500, 0.5412), lowpass(6500, 1.3066)};
   double sum = 0;
   size_t n = 0;
   for (size_t i = 0; i < s.size(); i++) {
     double x = s[i] / 32768.0;
-    if (speaker) x = spk2.run(spk1.run(x));
+    if (speaker) {
+      for (Biquad& b : spk) x = b.run(x);
+    }
     x = rlb.run(shelf.run(x));
     if (i > 11025) { sum += x * x; n++; }
   }
@@ -190,6 +210,8 @@ int main(int argc, char** argv) {
     else if (k == "notes") p.notes = v;
     else if (k == "wav") p.wav = v;
     else if (k == "test") p.test = n;
+    else if (k == "nolush") p.nolush = n;
+    else if (k == "probe") p.probe = n;
     else { fprintf(stderr, "unknown key: %s\n", k.c_str()); return 1; }
   }
   std::vector<int> notes;
@@ -251,6 +273,7 @@ int main(int argc, char** argv) {
 
   synth_voice = p.voice;
   if (p.voice != VOICE_ORIGINAL) voice_apply();
+  if (p.nolush) lush_fx.enable(false);
 
   // Run block by block: the main loop's pitch_update() and synth_update(),
   // then one pass of the audio update loop (software_isr).
@@ -262,6 +285,10 @@ int main(int argc, char** argv) {
     emu_millis = (uint32_t)t;
     const int s = (int)(t / p.step_ms);
     if (s != step) {
+      if (p.probe && step >= 0 && step < 8) {
+        fprintf(stderr, "note %d: sources %.2f  filter %.2f  envelope %.2f\n", step,
+                probe_src.read(), probe_filter.read(), probe_env.read());
+      }
       step = s;
       if (gate) note_off();
       note_on(notes[s % notes.size()] + transpose, p.velocity, true);

@@ -9,8 +9,9 @@ Usage (from the repo root, after tools/emu/build.sh):
                                         # render clips more than 10 samples
 
 For each voice: the median, 10th and 90th percentile of its loudness minus
-Original's at identical settings ("speaker" = LUFS after a 150 Hz high-pass,
-like the DUO's small speaker), the loudest setting, and clipped samples.
+Original's at identical settings ("speaker" = LUFS through the DUO speaker
+model in emu.cpp, measured with the tone test), the loudest setting, and
+clipped samples.
 Raw results go to tools/emu/build/sweep.csv.
 """
 import csv

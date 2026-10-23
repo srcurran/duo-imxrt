@@ -197,9 +197,27 @@ Full plan doc: https://claude.ai/code/artifact/c8336b8f-97ed-4703-bb62-ebb3c1ede
   at minimum resonance (the test's tone path uses 7 kHz); (2) the reverb multiplied the
   pulse wave's DC offset to 15% of full scale in Orchid; LushFx now has a ~10 Hz DC
   blocker (unit-tested), Orchid's peak dropped 0.45 -> 0.30.
-- **2026-10-23: the DUO is running the tone-test build** (flashed for the owner's
-  speaker reading; the updater hung on its final reset but the DUO restarted). Flash
-  the normal build back afterwards.
+- Speaker measured 2026-10-23 with the tone test (owner's screen recording of NIOSH
+  SLM; the recording's own audio agreed within ~1 dB from 300 Hz up, no distortion
+  above 300 Hz). Response re 1 kHz: 100 Hz -55, 150 -29, 200 -16, 300 -3, 400-6000 Hz
+  roughly flat with dips at 700 (-9), 1500 (-11), 3000 (-17) (likely room/phone
+  position), 8 kHz -28. At 100-150 Hz the speaker mostly makes harmonics. The test's
+  1 kHz tone read ~103 dBA near the phone: loud; lower VOLUME/TONE_LEVEL if re-run.
+  Emulator speaker model (lufs_spk) is now this shape: 6th-order high-pass 270 Hz +
+  4th-order low-pass 6.5 kHz, dips left out. With it, every voice's median is within
+  ~1 dB of Original (Organ -1.1); no trim changes needed.
+- Voices at noon knobs, measured on the DUO vs Original (dBA): Orchid +1.1, Organ
+  +2.9, Strings +1.6, Acid -1.7, Pluck +4.7, FM -2.3, Fold +2.0, Chord +3.1. The
+  emulator predicts these within ~1.5 dB except a ~2 dB offset on Original's segment
+  (Orchid, nearly the same sound, differed by 1.5 dB: measurement noise of one phone
+  position) and Pluck (random strike).
+- Pluck clipping (Accent, bright, filter knob high): the strike reaches ~95% at the
+  source and the filter peaks near its top on that noise burst; not the reverb (emu
+  `nolush=1` and `probe=1` showed it). Left as is: 3-8 single samples per 4 s.
+  Scaling the strike by ring length was tried and dropped (spread is mostly brightness
+  and filter; the +3 dB on short rings made clipping worse).
+- Normal build flashed back 2026-10-23 (`restore/duo_voice-levels.bin`, includes the
+  Orchid DC blocker).
 - Limits: no speaker or room model. Fitting a speaker bass cut-off to the owner's
   dB-meter test didn't help (knob positions in that test unknown; its Original segment
   read ~8 dB high), so levels match the electrical output; ears have the final say.
